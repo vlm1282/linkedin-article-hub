@@ -43,7 +43,7 @@ const LinkedInArticleHub = () => {
     { id: 'development', label: 'Development' }
   ];
 
-  // Validate and parse pasted content
+  // Validate and parse pasted content - JUST check format, not word count
   const validateAndParseContent = (text) => {
     const englishMatch = text.match(/===\s*ENGLISH\s*===([\s\S]*?)(?===\s*FRENCH|$)/i);
     const frenchMatch = text.match(/===\s*FRENCH\s*===([\s\S]*?)$/i);
@@ -51,21 +51,16 @@ const LinkedInArticleHub = () => {
     if (englishMatch && frenchMatch) {
       const en = englishMatch[1].trim();
       const fr = frenchMatch[1].trim();
-      const enWords = en.split(/\s+/).length;
-      const frWords = fr.split(/\s+/).length;
 
-      // Check if within 400-700 word range (strict max 700)
-      const enValid = enWords >= 400 && enWords <= 700;
-      const frValid = frWords >= 400 && frWords <= 700;
-
-      if (enValid && frValid) {
+      // Just check that both sections have content
+      if (en.length > 100 && fr.length > 100) {
         setContentValid(true);
         setParsedContent({ en, fr });
-        setValidationMessage(`✅ Perfect! ${enWords} EN words, ${frWords} FR words`);
+        setValidationMessage(`✅ Perfect! Content looks good.`);
         return true;
       } else {
         setContentValid(false);
-        setValidationMessage(`⚠️ EN: ${enWords} words (need 400-700), FR: ${frWords} words (need 400-700)`);
+        setValidationMessage(`⚠️ Make sure both English and French sections have content`);
         return false;
       }
     } else {
@@ -428,10 +423,6 @@ IMPORTANT:
     const article = articles.find(a => a.id === articleId);
     updateStatus(articleId, 'published');
     alert(`✅ Article published to LinkedIn!\n\nTopic: ${article.customTopic}`);
-  };
-
-  const wordCount = (text) => {
-    return text.trim().split(/\s+/).length;
   };
 
   const formatDate = (date) => {
@@ -1161,43 +1152,6 @@ IMPORTANT:
                     {validationMessage}
                   </p>
                 )}
-
-                {contentValid && (
-                  <button
-                    onClick={() => setShowPreview(!showPreview)}
-                    style={{
-                      marginTop: '1rem',
-                      padding: '0.5rem 1rem',
-                      background: '#fff',
-                      border: '2px solid #10b981',
-                      borderRadius: '0.5rem',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '0.875rem',
-                      color: '#059669'
-                    }}
-                  >
-                    {showPreview ? '▼ Hide Preview' : '▶ Show Preview'}
-                  </button>
-                )}
-
-                {showPreview && contentValid && (
-                  <div style={{
-                    marginTop: '1rem',
-                    padding: '1rem',
-                    background: '#f9fafb',
-                    borderRadius: '0.5rem',
-                    maxHeight: '300px',
-                    overflow: 'auto'
-                  }}>
-                    <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
-                      Preview:
-                    </p>
-                    <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
-                      {parsedContent.en.substring(0, 300)}...
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* Step 4: Image */}
@@ -1498,14 +1452,6 @@ IMPORTANT:
                 margin: 0
               }}>
                 {selectedArticle.content}
-              </p>
-
-              <p style={{
-                fontSize: '0.875rem',
-                color: '#9ca3af',
-                margin: '1.5rem 0 0 0'
-              }}>
-                {wordCount(selectedArticle.content)} words
               </p>
             </div>
           </div>
