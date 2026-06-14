@@ -23,8 +23,8 @@ const LinkedInArticleHub = () => {
 
   // Generation State
   const [generating, setGenerating] = useState(false);
-  const [groqApiKey, setGroqApiKey] = useState(localStorage.getItem('groqApiKey') || '');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(!localStorage.getItem('groqApiKey'));
+  const [hfApiKey, setHfApiKey] = useState(localStorage.getItem('hfApiKey') || '');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!localStorage.getItem('hfApiKey'));
   const [apiKeyError, setApiKeyError] = useState('');
 
   // Image State
@@ -44,26 +44,26 @@ const LinkedInArticleHub = () => {
 
   // Save API key to localStorage
   const saveApiKey = () => {
-    if (!groqApiKey.trim()) {
-      setApiKeyError('Please enter your Groq API key');
+    if (!hfApiKey.trim()) {
+      setApiKeyError('Please enter your HuggingFace API key');
       return;
     }
-    localStorage.setItem('groqApiKey', groqApiKey);
+    localStorage.setItem('hfApiKey', hfApiKey);
     setShowApiKeyInput(false);
     setApiKeyError('');
     alert('✅ API key saved!');
   };
 
-  // Generate article using Groq
-  const generateArticleWithGroq = async () => {
+  // Generate article using HuggingFace
+  const generateArticleWithHF = async () => {
     if (!manualArticle.topic.trim()) {
       alert('Please enter a topic first');
       return;
     }
 
-    if (!groqApiKey.trim()) {
+    if (!hfApiKey.trim()) {
       setShowApiKeyInput(true);
-      alert('Please add your Groq API key first');
+      alert('Please add your HuggingFace API key first');
       return;
     }
 
@@ -87,26 +87,22 @@ Requirements:
 - Focus on professional development or industry insights`;
 
     try {
-      // Try with the standard OpenAI-compatible endpoint and Llama model
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${groqApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-70b-versatile',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
+      const response = await fetch(
+        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+        {
+          headers: { Authorization: `Bearer ${hfApiKey}` },
+          method: 'POST',
+          body: JSON.stringify({
+            inputs: prompt,
+            parameters: {
+              max_new_tokens: 1500,
+              temperature: 0.7,
+              top_p: 0.95,
+              do_sample: true
             }
-          ],
-          temperature: 0.7,
-          max_tokens: 1500,
-          top_p: 1
-        })
-      });
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -119,28 +115,32 @@ Requirements:
         }
         
         if (response.status === 429) {
-          alert('⚠️ Rate limited. You\'ve used your free quota for today.\n\nGroq gives 30 requests/day free. Please try again tomorrow!');
+          alert('⚠️ Rate limited. Please wait a moment and try again.');
           setGenerating(false);
           return;
         }
 
-        throw new Error(`API Error ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
+        throw new Error(`API Error ${response.status}: ${errorData.error || 'Unknown error'}`);
       }
 
       const data = await response.json();
       
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      if (!data || !data[0] || !data[0].generated_text) {
         throw new Error('Invalid response from API');
       }
 
-      const generatedText = data.choices[0].message.content;
+      // Extract the generated text (HF returns with prompt included, so we extract after prompt)
+      const fullText = data[0].generated_text;
+      const generatedText = fullText.includes(prompt) 
+        ? fullText.substring(fullText.indexOf(prompt) + prompt.length).trim()
+        : fullText;
 
       // Set the generated content
       setManualArticle({ ...manualArticle, content: generatedText });
       alert('✅ Article generated! Review and edit if needed.');
     } catch (error) {
       console.error('Generation error:', error);
-      alert(`❌ Generation failed: ${error.message}\n\nTroubleshooting:\n1. Check your API key is correct\n2. Make sure you have quota (30 free/day)\n3. Try a different topic\n4. Check Groq console for issues`);
+      alert(`❌ Generation failed: ${error.message}\n\nTroubleshooting:\n1. Check your API key is correct\n2. Make sure the model is loaded (first request takes 30-60s)\n3. Try a simpler topic\n4. Check HuggingFace console for issues`);
     }
 
     setGenerating(false);
@@ -290,7 +290,7 @@ Requirements:
       return;
     }
     if (!manualArticle.content.trim()) {
-      alert('Please paste or generate the bilingual content');
+      alert('Please generate or paste the bilingual content');
       return;
     }
 
@@ -557,7 +557,7 @@ Requirements:
             </div>
             <div>
               <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>LinkedIn Article Hub</h1>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>Powered by Groq AI</p>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>Powered by HuggingFace AI</p>
             </div>
           </div>
 
@@ -570,6 +570,27 @@ Requirements:
                 LinkedIn Connected ✓
               </p>
             </div>
+            {hfApiKey && (
+              <button
+                onClick={() => setShowApiKeyInput(true)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  fontSize: '0.875rem',
+                  color: '#4b5563',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🔑 Change Key
+              </button>
+            )}
             <button
               onClick={handleSignOut}
               style={{
@@ -931,26 +952,27 @@ Requirements:
                   marginBottom: '2rem'
                 }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#d97706', margin: '0 0 1rem 0' }}>
-                    🔑 Setup Your Groq API Key
+                    🔑 Setup Your HuggingFace API Key
                   </h3>
                   <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
-                    Get your free Groq API key to generate articles instantly.
+                    Get your free HuggingFace API key to generate articles instantly.
                   </p>
                   <ol style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1rem 0', paddingLeft: '1.5rem' }}>
-                    <li>Visit <strong>console.groq.com</strong></li>
+                    <li>Visit <strong>huggingface.co</strong></li>
                     <li>Sign up for free (no credit card needed)</li>
-                    <li>Create an API key</li>
+                    <li>Go to Settings → Access Tokens</li>
+                    <li>Create a new token (read or write)</li>
                     <li>Paste it below</li>
                   </ol>
                   <div style={{ display: 'flex', gap: '0.75rem' }}>
                     <input
                       type="password"
-                      value={groqApiKey}
+                      value={hfApiKey}
                       onChange={(e) => {
-                        setGroqApiKey(e.target.value);
+                        setHfApiKey(e.target.value);
                         setApiKeyError('');
                       }}
-                      placeholder="gsk_..."
+                      placeholder="hf_..."
                       style={{
                         flex: 1,
                         padding: '0.75rem 1rem',
@@ -1077,21 +1099,21 @@ Requirements:
                 </div>
 
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
-                  One click to generate a bilingual article in 2-3 seconds:
+                  One click to generate a bilingual article in 10-20 seconds:
                 </p>
 
                 <button
-                  onClick={generateArticleWithGroq}
-                  disabled={generating || !groqApiKey.trim() || !manualArticle.topic.trim()}
+                  onClick={generateArticleWithHF}
+                  disabled={generating || !hfApiKey.trim() || !manualArticle.topic.trim()}
                   style={{
                     padding: '0.75rem 1.5rem',
-                    background: generating || !groqApiKey.trim() || !manualArticle.topic.trim() ? '#d1d5db' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: generating || !hfApiKey.trim() || !manualArticle.topic.trim() ? '#d1d5db' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '0.5rem',
                     fontWeight: '600',
                     fontSize: '0.95rem',
-                    cursor: generating || !groqApiKey.trim() || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
+                    cursor: generating || !hfApiKey.trim() || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem'
@@ -1100,7 +1122,7 @@ Requirements:
                   {generating ? (
                     <>
                       <Loader style={{ width: '1.25rem', height: '1.25rem', animation: 'spin 1s linear infinite' }} />
-                      Generating...
+                      Generating (may take 10-20 seconds)...
                     </>
                   ) : (
                     <>
@@ -1110,11 +1132,15 @@ Requirements:
                   )}
                 </button>
 
-                {!groqApiKey.trim() && (
+                {!hfApiKey.trim() && (
                   <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: '0.75rem 0 0 0' }}>
-                    ⚠️ Please set your Groq API key first
+                    ⚠️ Please set your HuggingFace API key first
                   </p>
                 )}
+
+                <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '1rem 0 0 0' }}>
+                  ⏱️ Note: First request loads the model (may take 30-60 seconds). Subsequent requests are faster.
+                </p>
               </div>
 
               {/* Step 3: Review Content */}
