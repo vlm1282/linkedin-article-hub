@@ -1152,6 +1152,53 @@ IMPORTANT:
                     {validationMessage}
                   </p>
                 )}
+
+                {contentValid && (
+                  <button
+                    onClick={() => setShowPreview(!showPreview)}
+                    style={{
+                      marginTop: '1rem',
+                      padding: '0.5rem 1rem',
+                      background: '#fff',
+                      border: '2px solid #10b981',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      color: '#059669'
+                    }}
+                  >
+                    {showPreview ? '▼ Hide Preview' : '▶ Show Preview'}
+                  </button>
+                )}
+
+                {showPreview && contentValid && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: '#f9fafb',
+                    borderRadius: '0.5rem',
+                    maxHeight: '400px',
+                    overflowY: 'auto'
+                  }}>
+                    <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '2px solid #e5e7eb' }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', margin: '0 0 0.5rem 0', textTransform: 'uppercase' }}>
+                        🇬🇧 English Preview:
+                      </p>
+                      <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                        {parsedContent.en.substring(0, 400)}...
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', margin: '0 0 0.5rem 0', textTransform: 'uppercase' }}>
+                        🇫🇷 French Preview:
+                      </p>
+                      <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                        {parsedContent.fr.substring(0, 400)}...
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Step 4: Image */}
