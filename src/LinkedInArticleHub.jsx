@@ -106,55 +106,42 @@ const LinkedInArticleHub = () => {
 Format your response EXACTLY like this:
 
 === ENGLISH ===
-[Your English article here - 500-700 words - COMPREHENSIVE & VISUAL]
+[Your English article here - 500-700 words - COMPREHENSIVE & ENGAGING]
 
 === FRENCH ===
-[Your French article here - 500-700 words - COMPREHENSIVE & VISUAL]
+[Your French article here - 500-700 words - COMPREHENSIVE & ENGAGING]
 
-STRUCTURE (must follow this):
-1. 🎯 HOOK (1-2 sentences)
-   - Attention-grabbing opening statement or question
-   - Make people want to keep reading
+STRUCTURE (write naturally, don't use these labels in the article):
+1. Open with an attention-grabbing statement or question that makes people want to read more
+2. Explain why this topic matters right now and what business/personal impact it has
+3. Share 3-4 key insights or main points:
+   • Use bullet points for clarity
+   • Include real examples or statistics where relevant
+   • Show how this applies in real situations
+4. Tell a specific story or case study that shows how this works in practice (2-3 paragraphs)
+5. Share what readers can actually DO with this information - specific, actionable steps
+6. End with a thought-provoking question or invitation to share thoughts
 
-2. 📌 CONTEXT (2-3 sentences)
-   - Why this topic matters NOW
-   - The business/personal impact
-   - The problem or opportunity
+VISUAL ELEMENTS:
+✨ Use 2-3 emojis strategically throughout (not overdone, keep it professional)
+• Use 3-4 bullet points for main insights
+📌 Short paragraphs (2-3 sentences max) for easy reading
+→ Use arrows/symbols occasionally for emphasis or flow
+💡 Make it skimmable but substantial
 
-3. 💡 KEY INSIGHTS (3-4 main points)
-   - Use bullet points or numbered list
-   - Each with a brief explanation (2-3 sentences)
-   - Include real examples or statistics where relevant
-   - Show practical application
-
-4. 🎬 STORY/EXAMPLE (2-3 paragraphs)
-   - One specific case study or real-world example
-   - Show how this works in practice
-   - Make it relatable and concrete
-
-5. ✨ ACTIONABLE TAKEAWAY (2-3 sentences)
-   - What can readers DO with this information?
-   - Specific, practical steps they can implement
-   - Make it easy to get started
-
-6. → CALL-TO-ACTION (1-2 sentences)
-   - Encourage engagement (comments, shares, thoughts)
-   - Ask a question to prompt responses
-   - End with energy/optimism
-
-FORMATTING:
-✨ Use emojis strategically (2-3 total, not overdone)
-• Use 3-4 bullet points or numbered list for key insights
-📌 Use short paragraphs (2-3 sentences max)
-→ Use arrows and symbols for visual flow
-💡 Make it skimmable but substantive
-
-TONE:
-- Professional yet conversational
+TONE & STYLE:
+- Professional yet conversational (like talking to a colleague)
 - Informative and insightful
 - Optimistic and forward-thinking
 - Suitable for LinkedIn audience
-- Aim for ~500-700 words (comprehensive but readable)`;
+- Aim for ~500-700 words (comprehensive but still readable)
+- Write as if you're sharing valuable knowledge with peers, not lecturing
+
+IMPORTANT:
+- Don't write "Hook:" or "Context:" or "Key Insights:" - these are just structure notes
+- Write smoothly and naturally - the reader shouldn't see these labels
+- Use line breaks between sections for visual breathing room
+- Include at least one specific example or statistic`;
 
     navigator.clipboard.writeText(prompt).then(() => {
       setPromptCopied(true);
@@ -256,7 +243,7 @@ TONE:
     setSearchingImages(true);
     try {
       const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=25&client_id=YOUR_UNSPLASH_API_KEY`
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=25&client_id=KgLPjRekFKSOZTbDbgzEtM12TD76d3lAWRvUAplyYQY`
       );
 
       if (response.ok) {
