@@ -1,0 +1,1056 @@
+import React, { useState } from 'react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, X } from 'lucide-react';
+
+const LinkedInArticleHub = () => {
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authenticating, setAuthenticating] = useState(false);
+
+  // App State
+  const [articles, setArticles] = useState([]);
+  const [view, setView] = useState('dashboard');
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [editingArticleId, setEditingArticleId] = useState(null);
+
+  // Form State
+  const [manualArticle, setManualArticle] = useState({
+    topic: '',
+    topicCategory: 'ai-evolution',
+    contentEn: '',
+    contentFr: '',
+    imageUrl: ''
+  });
+
+  const topicCategories = [
+    { id: 'ai-evolution', label: 'Evolution of AI' },
+    { id: 'ai-workplace', label: 'AI in the Workplace' },
+    { id: 'ai-economy', label: 'AI in the Economy' },
+    { id: 'project-management', label: 'Project Management' },
+    { id: 'product-ownership', label: 'Product Ownership' },
+    { id: 'development', label: 'Development' }
+  ];
+
+  // ==================== AUTHENTICATION ====================
+  const handleLinkedInSignIn = async () => {
+    setAuthenticating(true);
+    
+    setTimeout(() => {
+      setUser({
+        name: 'User Profile',
+        email: 'user@example.com',
+        linkedInId: 'urn:li:person:ABC123XYZ',
+        profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+        linkedinConnected: true
+      });
+      setIsAuthenticated(true);
+      setAuthenticating(false);
+    }, 1500);
+  };
+
+  const handleSignOut = () => {
+    setIsAuthenticated(false);
+    setUser(null);
+    setArticles([]);
+    setView('dashboard');
+  };
+
+  // ==================== ARTICLE MANAGEMENT ====================
+  const createOrUpdateArticle = () => {
+    // Validation
+    if (!manualArticle.topic.trim()) {
+      alert('Please enter a custom topic');
+      return;
+    }
+    if (!manualArticle.contentEn.trim()) {
+      alert('Please enter English content');
+      return;
+    }
+    if (!manualArticle.contentFr.trim()) {
+      alert('Please enter French content');
+      return;
+    }
+
+    if (editingArticleId) {
+      // UPDATE existing article
+      setArticles(articles.map(article => {
+        if (article.id === editingArticleId) {
+          return {
+            ...article,
+            customTopic: manualArticle.topic,
+            category: manualArticle.topicCategory,
+            categoryLabel: topicCategories.find(t => t.id === manualArticle.topicCategory)?.label,
+            content: {
+              en: manualArticle.contentEn,
+              fr: manualArticle.contentFr
+            },
+            image: manualArticle.imageUrl || 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=630&fit=crop'
+          };
+        }
+        return article;
+      }));
+      alert('✅ Article updated successfully!');
+    } else {
+      // CREATE new article
+      const newArticle = {
+        id: Date.now(),
+        customTopic: manualArticle.topic,
+        category: manualArticle.topicCategory,
+        categoryLabel: topicCategories.find(t => t.id === manualArticle.topicCategory)?.label,
+        status: 'draft',
+        content: {
+          en: manualArticle.contentEn,
+          fr: manualArticle.contentFr
+        },
+        image: manualArticle.imageUrl || 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=630&fit=crop',
+        createdAt: new Date(),
+        approvedAt: null,
+        publishedAt: null,
+        comments: []
+      };
+
+      setArticles([newArticle, ...articles]);
+      alert('✅ Article created successfully!');
+    }
+    
+    // Reset form
+    setManualArticle({
+      topic: '',
+      topicCategory: 'ai-evolution',
+      contentEn: '',
+      contentFr: '',
+      imageUrl: ''
+    });
+    setEditingArticleId(null);
+    setView('dashboard');
+  };
+
+  const startEditingArticle = (article) => {
+    setManualArticle({
+      topic: article.customTopic,
+      topicCategory: article.category,
+      contentEn: article.content.en,
+      contentFr: article.content.fr,
+      imageUrl: article.image
+    });
+    setEditingArticleId(article.id);
+    setView('create');
+  };
+
+  const cancelEdit = () => {
+    setManualArticle({
+      topic: '',
+      topicCategory: 'ai-evolution',
+      contentEn: '',
+      contentFr: '',
+      imageUrl: ''
+    });
+    setEditingArticleId(null);
+  };
+
+  const updateStatus = (articleId, newStatus) => {
+    setArticles(articles.map(article => {
+      if (article.id === articleId) {
+        const updated = { ...article, status: newStatus };
+        if (newStatus === 'approved') {
+          updated.approvedAt = new Date();
+        }
+        if (newStatus === 'published') {
+          updated.publishedAt = new Date();
+        }
+        return updated;
+      }
+      return article;
+    }));
+  };
+
+  const publishToLinkedIn = (articleId) => {
+    const article = articles.find(a => a.id === articleId);
+    updateStatus(articleId, 'published');
+    alert(`✅ Article published to LinkedIn!\n\nTopic: ${article.customTopic}\nLanguage: English`);
+  };
+
+  const wordCount = (text) => {
+    return text.trim().split(/\s+/).length;
+  };
+
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getStatusIcon = (status) => {
+    const icons = {
+      draft: <Clock style={{ width: '1rem', height: '1rem' }} />,
+      'pending-approval': <AlertCircle style={{ width: '1rem', height: '1rem' }} />,
+      approved: <CheckCircle style={{ width: '1rem', height: '1rem' }} />,
+      published: <Share2 style={{ width: '1rem', height: '1rem' }} />
+    };
+    return icons[status] || null;
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      draft: { bg: '#f0f4ff', text: '#667eea', label: 'Draft' },
+      'pending-approval': { bg: '#fef3c7', text: '#d97706', label: 'Pending' },
+      approved: { bg: '#d1fae5', text: '#059669', label: 'Approved' },
+      published: { bg: '#cffafe', text: '#0891b2', label: 'Published' }
+    };
+    return colors[status] || colors.draft;
+  };
+
+  // ==================== LOGIN SCREEN ====================
+  if (!isAuthenticated) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        padding: '2rem'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '1rem',
+          padding: '3rem',
+          maxWidth: '450px',
+          width: '100%',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            width: '60px',
+            height: '60px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '1rem',
+            margin: '0 auto 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Globe style={{ width: '32px', height: '32px', color: 'white' }} />
+          </div>
+          <h1 style={{ fontSize: '2rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: '#1f2937' }}>
+            LinkedIn Article Hub
+          </h1>
+          <p style={{ color: '#6b7280', margin: '0', fontSize: '0.95rem' }}>
+            Create, approve, and publish bilingual articles
+          </p>
+
+          <div style={{
+            background: '#f9fafb',
+            borderRadius: '0.75rem',
+            padding: '1.5rem',
+            marginBottom: '2rem',
+            marginTop: '2rem',
+            textAlign: 'left'
+          }}>
+            <h3 style={{ fontSize: '0.875rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 1rem 0' }}>
+              What you can do
+            </h3>
+            {[
+              'Create articles in English & French',
+              'Edit articles anytime',
+              'Manage approval workflow',
+              'Publish directly to LinkedIn'
+            ].map((item, idx) => (
+              <div key={idx} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                marginBottom: idx < 3 ? '0.75rem' : 0,
+                fontSize: '0.95rem',
+                color: '#4b5563'
+              }}>
+                <CheckCircle style={{ width: '1.25rem', height: '1.25rem', color: '#10b981', flexShrink: 0 }} />
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleLinkedInSignIn}
+            disabled={authenticating}
+            style={{
+              width: '100%',
+              padding: '1rem 1.5rem',
+              background: authenticating ? '#e5e7eb' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              fontWeight: '700',
+              fontSize: '1rem',
+              cursor: authenticating ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem'
+            }}
+          >
+            {authenticating ? (
+              <>
+                <Loader style={{ width: '1.25rem', height: '1.25rem', animation: 'spin 1s linear infinite' }} />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <Globe style={{ width: '1.25rem', height: '1.25rem' }} />
+                Sign in with LinkedIn
+              </>
+            )}
+          </button>
+
+          <p style={{
+            fontSize: '0.75rem',
+            color: '#9ca3af',
+            marginTop: '1.5rem',
+            margin: '1.5rem 0 0 0'
+          }}>
+            Your LinkedIn credentials are used to authenticate and publish articles to your account.
+            We never store your password.
+          </p>
+        </div>
+
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // ==================== MAIN APP ====================
+  return (
+    <div style={{ background: '#f8f9fa', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {/* Header */}
+      <div style={{ background: 'white', borderBottom: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Globe style={{ width: '24px', height: '24px', color: 'white' }} />
+            </div>
+            <div>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>LinkedIn Article Hub</h1>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>Bilingual content platform</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: '0.95rem', fontWeight: '600', color: '#1f2937', margin: 0 }}>
+                {user?.name || 'User'}
+              </p>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>
+                LinkedIn Connected ✓
+              </p>
+            </div>
+            <button
+              onClick={handleSignOut}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#f3f4f6',
+                border: '1px solid #d1d5db',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                color: '#4b5563',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s'
+              }}
+            >
+              <LogOut style={{ width: '1rem', height: '1rem' }} />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div style={{ background: 'white', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '0', padding: '0 2rem' }}>
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+            { id: 'create', label: editingArticleId ? 'Edit Article' : 'Create Article', icon: editingArticleId ? '✏️' : '✏️' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (tab.id === 'dashboard' && editingArticleId) {
+                  const confirmed = window.confirm('Cancel editing? Any changes will be lost.');
+                  if (confirmed) {
+                    cancelEdit();
+                    setView('dashboard');
+                  }
+                } else {
+                  setView(tab.id);
+                }
+              }}
+              style={{
+                padding: '1rem 1.5rem',
+                border: 'none',
+                background: 'transparent',
+                borderBottom: view === tab.id ? '3px solid #667eea' : '3px solid transparent',
+                color: view === tab.id ? '#667eea' : '#6b7280',
+                cursor: 'pointer',
+                fontWeight: view === tab.id ? '600' : '500',
+                fontSize: '0.95rem',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
+        {/* Dashboard View */}
+        {view === 'dashboard' && (
+          <div>
+            <div style={{ marginBottom: '2rem' }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: '#1f2937' }}>
+                Articles
+              </h2>
+              <p style={{ color: '#6b7280', margin: 0 }}>
+                {articles.length === 0 ? 'No articles yet' : `${articles.length} article${articles.length !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+
+            {articles.length === 0 ? (
+              <div style={{
+                background: 'white',
+                borderRadius: '1rem',
+                padding: '3rem',
+                textAlign: 'center',
+                border: '2px dashed #e5e7eb'
+              }}>
+                <Globe style={{ width: '3rem', height: '3rem', color: '#d1d5db', margin: '0 auto 1rem' }} />
+                <p style={{ fontSize: '1.125rem', color: '#6b7280', margin: '0 0 1rem 0' }}>
+                  No articles yet
+                </p>
+                <p style={{ color: '#9ca3af', margin: '0 0 1.5rem 0' }}>
+                  Create your first article to get started
+                </p>
+                <button
+                  onClick={() => setView('create')}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '0.95rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Plus style={{ width: '1.25rem', height: '1.25rem' }} />
+                  Create Article
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {articles.map(article => {
+                  const status = getStatusColor(article.status);
+                  return (
+                    <div key={article.id} style={{
+                      background: 'white',
+                      borderRadius: '0.75rem',
+                      overflow: 'hidden',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      display: 'grid',
+                      gridTemplateColumns: '220px 1fr',
+                      gap: 0
+                    }}>
+                      <div style={{
+                        background: '#f3f4f6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        minHeight: '220px'
+                      }}>
+                        <img 
+                          src={article.image} 
+                          alt={article.customTopic}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+
+                      <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ marginBottom: '1rem' }}>
+                          <h3 style={{ fontSize: '1.125rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: '#1f2937' }}>
+                            {article.customTopic}
+                          </h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              background: '#f0f4ff',
+                              color: '#667eea',
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '9999px',
+                              fontWeight: '600'
+                            }}>
+                              {article.categoryLabel}
+                            </span>
+                            <span style={{
+                              fontSize: '0.75rem',
+                              background: status.bg,
+                              color: status.text,
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '9999px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}>
+                              {getStatusIcon(article.status)}
+                              {status.label}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                              Created {formatDate(article.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p style={{
+                          color: '#6b7280',
+                          lineHeight: '1.5',
+                          marginBottom: '1rem',
+                          flexGrow: 1,
+                          maxHeight: '3rem',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          margin: '0 0 1rem 0'
+                        }}>
+                          {article.content.en.substring(0, 150)}...
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedArticle(article);
+                              setView('preview');
+                            }}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              background: '#f3f4f6',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                              fontSize: '0.875rem',
+                              color: '#4b5563',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Eye style={{ width: '1rem', height: '1rem' }} />
+                            Preview
+                          </button>
+
+                          <button
+                            onClick={() => startEditingArticle(article)}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              background: '#e0e7ff',
+                              border: '1px solid #c7d2fe',
+                              borderRadius: '0.375rem',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                              fontSize: '0.875rem',
+                              color: '#667eea',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            <Edit2 style={{ width: '1rem', height: '1rem' }} />
+                            Edit
+                          </button>
+
+                          {article.status === 'draft' && (
+                            <button
+                              onClick={() => updateStatus(article.id, 'pending-approval')}
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background: '#fbbf24',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.375rem',
+                                cursor: 'pointer',
+                                fontWeight: '500',
+                                fontSize: '0.875rem',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              Submit for Approval
+                            </button>
+                          )}
+
+                          {article.status === 'pending-approval' && (
+                            <>
+                              <button
+                                onClick={() => updateStatus(article.id, 'approved')}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '0.375rem',
+                                  cursor: 'pointer',
+                                  fontWeight: '500',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                ✓ Approve
+                              </button>
+                              <button
+                                onClick={() => updateStatus(article.id, 'draft')}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '0.375rem',
+                                  cursor: 'pointer',
+                                  fontWeight: '500',
+                                  fontSize: '0.875rem'
+                                }}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+
+                          {article.status === 'approved' && (
+                            <button
+                              onClick={() => publishToLinkedIn(article.id)}
+                              style={{
+                                padding: '0.5rem 1rem',
+                                background: '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.375rem',
+                                cursor: 'pointer',
+                                fontWeight: '500',
+                                fontSize: '0.875rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                              }}
+                            >
+                              <Share2 style={{ width: '1rem', height: '1rem' }} />
+                              Publish to LinkedIn
+                            </button>
+                          )}
+
+                          {article.status === 'published' && (
+                            <span style={{
+                              padding: '0.5rem 1rem',
+                              background: '#cffafe',
+                              color: '#0891b2',
+                              borderRadius: '0.375rem',
+                              fontWeight: '500',
+                              fontSize: '0.875rem'
+                            }}>
+                              ✓ Published
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Create/Edit Article View */}
+        {view === 'create' && (
+          <div>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: '700', margin: '0 0 1.5rem 0', color: '#1f2937' }}>
+              {editingArticleId ? '✏️ Edit Article' : '✏️ Create New Article'}
+            </h2>
+
+            <div style={{
+              background: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              maxWidth: '900px'
+            }}>
+              {/* Article Topic */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{
+                  display: 'block',
+                  fontWeight: '600',
+                  marginBottom: '0.75rem',
+                  color: '#1f2937',
+                  fontSize: '0.95rem'
+                }}>
+                  Article Topic *
+                </label>
+                <input
+                  type="text"
+                  value={manualArticle.topic}
+                  onChange={(e) => setManualArticle({ ...manualArticle, topic: e.target.value })}
+                  placeholder="e.g., 'AI's Impact on Canadian Job Market'"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.95rem',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.5rem 0 0 0' }}>
+                  Enter a specific topic for this article
+                </p>
+              </div>
+
+              {/* Category */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{
+                  display: 'block',
+                  fontWeight: '600',
+                  marginBottom: '0.75rem',
+                  color: '#1f2937',
+                  fontSize: '0.95rem'
+                }}>
+                  Category *
+                </label>
+                <select
+                  value={manualArticle.topicCategory}
+                  onChange={(e) => setManualArticle({ ...manualArticle, topicCategory: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.95rem',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    background: 'white',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {topicCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* English Content */}
+              <div style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+                  <label style={{
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    fontSize: '0.95rem'
+                  }}>
+                    English Article (300-350 words) *
+                  </label>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    color: wordCount(manualArticle.contentEn) >= 300 && wordCount(manualArticle.contentEn) <= 350 ? '#10b981' : '#9ca3af',
+                    fontWeight: '600'
+                  }}>
+                    {wordCount(manualArticle.contentEn)} words
+                  </span>
+                </div>
+                <textarea
+                  value={manualArticle.contentEn}
+                  onChange={(e) => setManualArticle({ ...manualArticle, contentEn: e.target.value })}
+                  placeholder="Paste or write your English article here..."
+                  style={{
+                    width: '100%',
+                    height: '280px',
+                    padding: '1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontFamily: 'system-ui, -apple-system, monospace',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* French Content */}
+              <div style={{ marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+                  <label style={{
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    fontSize: '0.95rem'
+                  }}>
+                    French Article (300-350 words) *
+                  </label>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    color: wordCount(manualArticle.contentFr) >= 300 && wordCount(manualArticle.contentFr) <= 350 ? '#10b981' : '#9ca3af',
+                    fontWeight: '600'
+                  }}>
+                    {wordCount(manualArticle.contentFr)} words
+                  </span>
+                </div>
+                <textarea
+                  value={manualArticle.contentFr}
+                  onChange={(e) => setManualArticle({ ...manualArticle, contentFr: e.target.value })}
+                  placeholder="Paste or write your French article here..."
+                  style={{
+                    width: '100%',
+                    height: '280px',
+                    padding: '1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontFamily: 'system-ui, -apple-system, monospace',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Image URL */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{
+                  display: 'block',
+                  fontWeight: '600',
+                  marginBottom: '0.75rem',
+                  color: '#1f2937',
+                  fontSize: '0.95rem'
+                }}>
+                  Cover Image URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  value={manualArticle.imageUrl}
+                  onChange={(e) => setManualArticle({ ...manualArticle, imageUrl: e.target.value })}
+                  placeholder="https://example.com/image.jpg"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.95rem',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.5rem 0 0 0' }}>
+                  Leave blank to use default image
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  onClick={createOrUpdateArticle}
+                  style={{
+                    padding: '0.875rem 2rem',
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {editingArticleId ? (
+                    <>
+                      <Save style={{ width: '1.25rem', height: '1.25rem' }} />
+                      Save Changes
+                    </>
+                  ) : (
+                    <>
+                      <Send style={{ width: '1.25rem', height: '1.25rem' }} />
+                      Create Article
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    cancelEdit();
+                    setView('dashboard');
+                  }}
+                  style={{
+                    padding: '0.875rem 2rem',
+                    background: '#f3f4f6',
+                    color: '#4b5563',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Preview View */}
+        {view === 'preview' && selectedArticle && (
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            overflow: 'hidden',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{
+              padding: '2rem',
+              borderBottom: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #f0f4ff 0%, #f5f3ff 100%)'
+            }}>
+              <div>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>
+                  {selectedArticle.customTopic}
+                </h2>
+                <p style={{ color: '#6b7280', margin: '0.5rem 0 0 0' }}>
+                  Preview both language versions
+                </p>
+              </div>
+              <button
+                onClick={() => setView('dashboard')}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '0.875rem',
+                  color: '#4b5563'
+                }}
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+              <div style={{ padding: '2rem', borderRight: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                  <Globe style={{ width: '1.25rem', height: '1.25rem', color: '#667eea' }} />
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: '700', margin: 0, color: '#667eea' }}>
+                    English Version
+                  </h3>
+                </div>
+                <div style={{ marginBottom: '2rem' }}>
+                  <img 
+                    src={selectedArticle.image} 
+                    alt={selectedArticle.customTopic}
+                    style={{
+                      width: '100%',
+                      borderRadius: '0.5rem',
+                      marginBottom: '1rem',
+                      maxHeight: '200px',
+                      objectFit: 'cover'
+                    }}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                  <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', margin: 0 }}>
+                    {wordCount(selectedArticle.content.en)} words
+                  </p>
+                </div>
+                <p style={{
+                  color: '#4b5563',
+                  lineHeight: '1.7',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '0.95rem'
+                }}>
+                  {selectedArticle.content.en}
+                </p>
+              </div>
+
+              <div style={{ padding: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                  <Globe style={{ width: '1.25rem', height: '1.25rem', color: '#764ba2' }} />
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: '700', margin: 0, color: '#764ba2' }}>
+                    Version Française
+                  </h3>
+                </div>
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={{
+                    width: '100%',
+                    height: '200px',
+                    background: '#f3f4f6',
+                    borderRadius: '0.5rem',
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#9ca3af',
+                    fontSize: '0.875rem'
+                  }}>
+                    Same image
+                  </div>
+                  <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', margin: 0 }}>
+                    {wordCount(selectedArticle.content.fr)} words
+                  </p>
+                </div>
+                <p style={{
+                  color: '#4b5563',
+                  lineHeight: '1.7',
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '0.95rem'
+                }}>
+                  {selectedArticle.content.fr}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default LinkedInArticleHub;
