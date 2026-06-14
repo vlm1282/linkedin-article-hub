@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Copy, Image as ImageIcon } from 'lucide-react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Copy, Image as ImageIcon, X } from 'lucide-react';
 
 const LinkedInArticleHub = () => {
   // Authentication State
@@ -25,6 +25,7 @@ const LinkedInArticleHub = () => {
   const [searchingImages, setSearchingImages] = useState(false);
   const [suggestedImages, setSuggestedImages] = useState([]);
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
+  const [customImageSearch, setCustomImageSearch] = useState('');
 
   // Prompt State
   const [aiPrompt, setAiPrompt] = useState('');
@@ -84,7 +85,14 @@ Requirements:
     });
   };
 
-  // Search for images on Unsplash
+  // Extract key words from topic for better search
+  const extractKeywords = (topic) => {
+    const stopWords = ['the', 'in', 'and', 'or', 'of', 'to', 'a', 'an', 'is', 'are'];
+    const words = topic.toLowerCase().split(/\s+/).filter(word => !stopWords.includes(word) && word.length > 3);
+    return words.slice(0, 3); // Get top 3 keywords
+  };
+
+  // Search for images on Unsplash with multiple queries
   const searchImages = async () => {
     if (!manualArticle.topic.trim()) {
       alert('Please enter a topic first');
@@ -93,35 +101,64 @@ Requirements:
 
     setSearchingImages(true);
     try {
-      const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(manualArticle.topic)}&per_page=6&client_id=YOUR_UNSPLASH_API_KEY`
-      );
-      
-      // Fallback: Use hardcoded images if API doesn't work
-      const fallbackImages = [
-        'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop',
-        'https://images.unsplash.com/photo-1677442d019e157cab9fdb4e58b2c0edb78542ca8?w=500&h=300&fit=crop',
-        'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop'
+      // Get keywords from topic
+      const keywords = extractKeywords(manualArticle.topic);
+      const searchQueries = [
+        manualArticle.topic, // First try the full topic
+        keywords.join(' '), // Then try main keywords
+        manualArticle.topicCategory.replace(/-/g, ' ') // Then try the category
       ];
 
-      if (response.ok) {
-        const data = await response.json();
-        const images = data.results.map(img => ({
-          url: img.urls.regular,
-          alt: img.alt_description || 'Image'
-        }));
-        setSuggestedImages(images.length > 0 ? images : fallbackImages.map(url => ({ url, alt: 'Image' })));
-      } else {
-        setSuggestedImages(fallbackImages.map(url => ({ url, alt: 'Image' })));
+      let allImages = [];
+
+      // Try each search query
+      for (const query of searchQueries) {
+        if (allImages.length >= 12) break; // Stop if we have enough images
+
+        try {
+          const response = await fetch(
+            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=8&client_id=YOUR_UNSPLASH_API_KEY`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const images = data.results.map(img => ({
+              url: img.urls.regular,
+              alt: img.alt_description || 'Image'
+            }));
+            allImages = [...allImages, ...images];
+          }
+        } catch (e) {
+          console.log(`Search failed for "${query}"`);
+        }
       }
 
+      // Remove duplicates
+      const uniqueImages = allImages.filter((img, idx, arr) => 
+        arr.findIndex(i => i.url === img.url) === idx
+      ).slice(0, 12);
+
+      // Fallback images if search fails
+      const fallbackImages = [
+        { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Professional' },
+        { url: 'https://images.unsplash.com/photo-1677442d019e157cab9fdb4e58b2c0edb78542ca8?w=500&h=300&fit=crop', alt: 'Business' },
+        { url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=300&fit=crop', alt: 'Technology' },
+        { url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&h=300&fit=crop', alt: 'Innovation' },
+        { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Modern' },
+        { url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=500&h=300&fit=crop', alt: 'Strategy' }
+      ];
+
+      setSuggestedImages(uniqueImages.length > 0 ? uniqueImages : fallbackImages);
       setShowImageSuggestions(true);
     } catch (error) {
       console.log('Using fallback images');
       setSuggestedImages([
-        { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Image' },
-        { url: 'https://images.unsplash.com/photo-1677442d019e157cab9fdb4e58b2c0edb78542ca8?w=500&h=300&fit=crop', alt: 'Image' },
-        { url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=300&fit=crop', alt: 'Image' }
+        { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Professional' },
+        { url: 'https://images.unsplash.com/photo-1677442d019e157cab9fdb4e58b2c0edb78542ca8?w=500&h=300&fit=crop', alt: 'Business' },
+        { url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=300&fit=crop', alt: 'Technology' },
+        { url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&h=300&fit=crop', alt: 'Innovation' },
+        { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Modern' },
+        { url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=500&h=300&fit=crop', alt: 'Strategy' }
       ]);
       setShowImageSuggestions(true);
     }
@@ -131,6 +168,38 @@ Requirements:
   const selectImage = (url) => {
     setManualArticle({ ...manualArticle, imageUrl: url });
     setShowImageSuggestions(false);
+  };
+
+  // Manual image search with custom keywords
+  const searchImagesManual = async (searchTerm) => {
+    if (!searchTerm.trim()) {
+      alert('Please enter search terms');
+      return;
+    }
+
+    setSearchingImages(true);
+    try {
+      const response = await fetch(
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=12&client_id=YOUR_UNSPLASH_API_KEY`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const images = data.results.map(img => ({
+          url: img.urls.regular,
+          alt: img.alt_description || 'Image'
+        }));
+        setSuggestedImages(images.length > 0 ? images : []);
+        if (images.length === 0) {
+          alert('No images found. Try different keywords.');
+        }
+      } else {
+        alert('Search failed. Try again.');
+      }
+    } catch (error) {
+      alert('Search failed. Try again.');
+    }
+    setSearchingImages(false);
   };
 
   // Open Claude with prompt
@@ -1063,36 +1132,87 @@ Requirements:
                   Auto-find relevant images or provide your own:
                 </p>
 
-                <button
-                  onClick={searchImages}
-                  disabled={searchingImages || !manualArticle.topic.trim()}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: searchingImages ? '#e5e7eb' : '#10b981',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '0.5rem',
+                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={searchImages}
+                    disabled={searchingImages || !manualArticle.topic.trim()}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: searchingImages ? '#e5e7eb' : '#10b981',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      cursor: searchingImages || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    {searchingImages ? (
+                      <>
+                        <Loader style={{ width: '1rem', height: '1rem', animation: 'spin 1s linear infinite' }} />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon style={{ width: '1rem', height: '1rem' }} />
+                        Find Images
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Manual Search Box */}
+                <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #86efac' }}>
+                  <label style={{
+                    display: 'block',
                     fontWeight: '600',
-                    fontSize: '0.875rem',
-                    cursor: searchingImages || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    marginBottom: '1rem'
-                  }}
-                >
-                  {searchingImages ? (
-                    <>
-                      <Loader style={{ width: '1rem', height: '1rem', animation: 'spin 1s linear infinite' }} />
-                      Searching...
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon style={{ width: '1rem', height: '1rem' }} />
-                      Find Images
-                    </>
-                  )}
-                </button>
+                    marginBottom: '0.5rem',
+                    color: '#1f2937',
+                    fontSize: '0.875rem'
+                  }}>
+                    Refine search (optional):
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <input
+                      type="text"
+                      value={customImageSearch}
+                      onChange={(e) => setCustomImageSearch(e.target.value)}
+                      placeholder="e.g., 'healthcare', 'technology', 'people'"
+                      onKeyPress={(e) => e.key === 'Enter' && searchImagesManual(customImageSearch)}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #86efac',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.875rem',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <button
+                      onClick={() => searchImagesManual(customImageSearch)}
+                      disabled={!customImageSearch.trim() || searchingImages}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: customImageSearch.trim() && !searchingImages ? '#10b981' : '#d1d5db',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: customImageSearch.trim() && !searchingImages ? 'pointer' : 'not-allowed',
+                        fontWeight: '600',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      Search
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.5rem 0 0 0' }}>
+                    Type keywords and press Enter or click Search to refine results
+                  </p>
+                </div>
 
                 {showImageSuggestions && (
                   <div style={{ marginBottom: '1rem' }}>
