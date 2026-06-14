@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Image as ImageIcon, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Image as ImageIcon, Zap, Copy, Check } from 'lucide-react';
 
 const LinkedInArticleHub = () => {
   // Authentication State
@@ -21,11 +21,14 @@ const LinkedInArticleHub = () => {
     imageUrl: ''
   });
 
-  // Generation State
-  const [generating, setGenerating] = useState(false);
-  const [hfApiKey, setHfApiKey] = useState(localStorage.getItem('hfApiKey') || '');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(!localStorage.getItem('hfApiKey'));
-  const [apiKeyError, setApiKeyError] = useState('');
+  // Smart features
+  const [recentTopics, setRecentTopics] = useState(JSON.parse(localStorage.getItem('recentTopics') || '[]'));
+  const [draftTopic, setDraftTopic] = useState('');
+  const [promptCopied, setPromptCopied] = useState(false);
+  const [contentValid, setContentValid] = useState(false);
+  const [validationMessage, setValidationMessage] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+  const [parsedContent, setParsedContent] = useState({ en: '', fr: '' });
 
   // Image State
   const [searchingImages, setSearchingImages] = useState(false);
@@ -42,108 +45,112 @@ const LinkedInArticleHub = () => {
     { id: 'development', label: 'Development' }
   ];
 
-  // Save API key to localStorage
-  const saveApiKey = () => {
-    if (!hfApiKey.trim()) {
-      setApiKeyError('Please enter your HuggingFace API key');
-      return;
+  // Auto-save draft topic
+  useEffect(() => {
+    if (manualArticle.topic.trim()) {
+      setDraftTopic(manualArticle.topic);
     }
-    localStorage.setItem('hfApiKey', hfApiKey);
-    setShowApiKeyInput(false);
-    setApiKeyError('');
-    alert('✅ API key saved!');
+  }, [manualArticle.topic]);
+
+  // Validate and parse pasted content
+  const validateAndParseContent = (text) => {
+    const englishMatch = text.match(/===\s*ENGLISH\s*===([\s\S]*?)(?===\s*FRENCH|$)/i);
+    const frenchMatch = text.match(/===\s*FRENCH\s*===([\s\S]*?)$/i);
+
+    if (englishMatch && frenchMatch) {
+      const en = englishMatch[1].trim();
+      const fr = frenchMatch[1].trim();
+      const enWords = en.split(/\s+/).length;
+      const frWords = fr.split(/\s+/).length;
+
+      // Check if within 200-300 word range (flexible for faster processing)
+      const enValid = enWords >= 150 && enWords <= 350;
+      const frValid = frWords >= 150 && frWords <= 350;
+
+      if (enValid && frValid) {
+        setContentValid(true);
+        setParsedContent({ en, fr });
+        setValidationMessage(`✅ Perfect! ${enWords} EN words, ${frWords} FR words`);
+        return true;
+      } else {
+        setContentValid(false);
+        setValidationMessage(`⚠️ EN: ${enWords} words (need 150-350), FR: ${frWords} words (need 150-350)`);
+        return false;
+      }
+    } else {
+      setContentValid(false);
+      setValidationMessage('❌ Format error. Make sure to include === ENGLISH === and === FRENCH === markers');
+      return false;
+    }
   };
 
-  // Generate article using HuggingFace
-  const generateArticleWithHF = async () => {
+  const handleContentPaste = (e) => {
+    const text = e.target.value;
+    setManualArticle({ ...manualArticle, content: text });
+    
+    if (text.trim().length > 50) {
+      validateAndParseContent(text);
+    } else {
+      setContentValid(false);
+      setValidationMessage('');
+    }
+  };
+
+  // Copy prompt to clipboard
+  const copyPromptToClipboard = () => {
     if (!manualArticle.topic.trim()) {
       alert('Please enter a topic first');
       return;
     }
-
-    if (!hfApiKey.trim()) {
-      setShowApiKeyInput(true);
-      alert('Please add your HuggingFace API key first');
-      return;
-    }
-
-    setGenerating(true);
 
     const prompt = `Write a professional LinkedIn article about: "${manualArticle.topic}"
 
 Format your response EXACTLY like this:
 
 === ENGLISH ===
-[Your English article here - 300-350 words]
+[Your English article here - 250 words - WITH VISUAL FORMATTING]
 
 === FRENCH ===
-[Your French article here - 300-350 words]
+[Your French article here - 250 words - WITH VISUAL FORMATTING]
+
+CRITICAL: Make it VISUAL and ENGAGING:
+✨ Use emojis/icons throughout (not too many, 2-3 total)
+• Use 2-3 bullet points for key takeaways
+📌 Use short, punchy paragraphs (2-3 sentences max)
+🎯 Start with a hook that grabs attention
+💡 Include 1 actionable insight or tip
+→ Use arrows and symbols for flow/emphasis
+
+Structure:
+1. Attention-grabbing opening line (with emoji)
+2. 1-2 short paragraphs explaining the topic
+3. 2-3 bullet points with key insights
+4. 1 actionable takeaway or call-to-action
+5. Brief closing thought
 
 Requirements:
-- Use clear, engaging language suitable for LinkedIn
-- Include actionable insights
-- Make it informative but conversational
-- Both versions should be exactly 300-350 words
-- Focus on professional development or industry insights`;
+- Professional yet conversational tone
+- Suitable for LinkedIn
+- Aim for ~250 words (visual formatting reduces word count slightly)
+- Make it skimmable (people scan LinkedIn, not read)
+- Use line breaks between sections
+- Include relevant emojis but keep it professional`;
 
-    try {
-      const response = await fetch(
-        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
-        {
-          headers: { Authorization: `Bearer ${hfApiKey}` },
-          method: 'POST',
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              max_new_tokens: 1500,
-              temperature: 0.7,
-              top_p: 0.95,
-              do_sample: true
-            }
-          }),
-        }
-      );
+    navigator.clipboard.writeText(prompt).then(() => {
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 2000);
+      // Open Claude
+      setTimeout(() => {
+        window.open('https://claude.ai', '_blank');
+      }, 500);
+    });
+  };
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        
-        if (response.status === 401 || response.status === 403) {
-          setShowApiKeyInput(true);
-          setApiKeyError('Invalid API key. Please check and try again.');
-          setGenerating(false);
-          return;
-        }
-        
-        if (response.status === 429) {
-          alert('⚠️ Rate limited. Please wait a moment and try again.');
-          setGenerating(false);
-          return;
-        }
-
-        throw new Error(`API Error ${response.status}: ${errorData.error || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data || !data[0] || !data[0].generated_text) {
-        throw new Error('Invalid response from API');
-      }
-
-      // Extract the generated text (HF returns with prompt included, so we extract after prompt)
-      const fullText = data[0].generated_text;
-      const generatedText = fullText.includes(prompt) 
-        ? fullText.substring(fullText.indexOf(prompt) + prompt.length).trim()
-        : fullText;
-
-      // Set the generated content
-      setManualArticle({ ...manualArticle, content: generatedText });
-      alert('✅ Article generated! Review and edit if needed.');
-    } catch (error) {
-      console.error('Generation error:', error);
-      alert(`❌ Generation failed: ${error.message}\n\nTroubleshooting:\n1. Check your API key is correct\n2. Make sure the model is loaded (first request takes 30-60s)\n3. Try a simpler topic\n4. Check HuggingFace console for issues`);
-    }
-
-    setGenerating(false);
+  // Add topic to recent
+  const addToRecentTopics = (topic) => {
+    const updated = [topic, ...recentTopics.filter(t => t !== topic)].slice(0, 5);
+    setRecentTopics(updated);
+    localStorage.setItem('recentTopics', JSON.stringify(updated));
   };
 
   // Extract key words from topic for better search
@@ -153,7 +160,7 @@ Requirements:
     return words.slice(0, 3);
   };
 
-  // Search for images on Unsplash with multiple queries
+  // Search for images on Unsplash
   const searchImages = async () => {
     if (!manualArticle.topic.trim()) {
       alert('Please enter a topic first');
@@ -208,21 +215,16 @@ Requirements:
       setSuggestedImages(uniqueImages.length > 0 ? uniqueImages : fallbackImages);
       setShowImageSuggestions(true);
     } catch (error) {
-      console.log('Using fallback images');
       setSuggestedImages([
         { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Professional' },
         { url: 'https://images.unsplash.com/photo-1677442d019e157cab9fdb4e58b2c0edb78542ca8?w=500&h=300&fit=crop', alt: 'Business' },
-        { url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=300&fit=crop', alt: 'Technology' },
-        { url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&h=300&fit=crop', alt: 'Innovation' },
-        { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Modern' },
-        { url: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=500&h=300&fit=crop', alt: 'Strategy' }
+        { url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=300&fit=crop', alt: 'Technology' }
       ]);
       setShowImageSuggestions(true);
     }
     setSearchingImages(false);
   };
 
-  // Manual image search with custom keywords
   const searchImagesManual = async (searchTerm) => {
     if (!searchTerm.trim()) {
       alert('Please enter search terms');
@@ -245,8 +247,6 @@ Requirements:
         if (images.length === 0) {
           alert('No images found. Try different keywords.');
         }
-      } else {
-        alert('Search failed. Try again.');
       }
     } catch (error) {
       alert('Search failed. Try again.');
@@ -289,8 +289,8 @@ Requirements:
       alert('Please enter a topic');
       return;
     }
-    if (!manualArticle.content.trim()) {
-      alert('Please generate or paste the bilingual content');
+    if (!contentValid) {
+      alert('Please paste valid bilingual content (with === ENGLISH === and === FRENCH === markers)');
       return;
     }
 
@@ -324,6 +324,7 @@ Requirements:
       };
 
       setArticles([newArticle, ...articles]);
+      addToRecentTopics(manualArticle.topic);
       alert('✅ Article created successfully!');
     }
     
@@ -333,6 +334,8 @@ Requirements:
       content: '',
       imageUrl: ''
     });
+    setContentValid(false);
+    setValidationMessage('');
     setSuggestedImages([]);
     setShowImageSuggestions(false);
     setEditingArticleId(null);
@@ -357,6 +360,8 @@ Requirements:
       content: '',
       imageUrl: ''
     });
+    setContentValid(false);
+    setValidationMessage('');
     setSuggestedImages([]);
     setShowImageSuggestions(false);
     setEditingArticleId(null);
@@ -427,7 +432,7 @@ Requirements:
         <div style={{
           background: 'white',
           borderRadius: '1rem',
-          padding: '3rem',
+          padding: '3rem 2rem',
           maxWidth: '450px',
           width: '100%',
           boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
@@ -464,17 +469,18 @@ Requirements:
               What you can do
             </h3>
             {[
-              'Generate articles instantly with AI',
+              'Generate articles with Claude AI',
+              'Auto-parse bilingual content',
               'Auto-suggest relevant images',
               'Edit articles anytime',
               'Manage approval workflow',
-              'Publish directly to LinkedIn'
+              'Publish to LinkedIn'
             ].map((item, idx) => (
               <div key={idx} style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem',
-                marginBottom: idx < 4 ? '0.75rem' : 0,
+                marginBottom: idx < 5 ? '0.75rem' : 0,
                 fontSize: '0.95rem',
                 color: '#4b5563'
               }}>
@@ -516,16 +522,6 @@ Requirements:
               </>
             )}
           </button>
-
-          <p style={{
-            fontSize: '0.75rem',
-            color: '#9ca3af',
-            marginTop: '1.5rem',
-            margin: '1.5rem 0 0 0'
-          }}>
-            Your LinkedIn credentials are used to authenticate and publish articles to your account.
-            We never store your password.
-          </p>
         </div>
 
         <style>{`
@@ -541,9 +537,9 @@ Requirements:
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {/* Header */}
-      <div style={{ background: 'white', borderBottom: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ background: 'white', borderBottom: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 20 }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: 0 }}>
             <div style={{
               width: '40px',
               height: '40px',
@@ -551,46 +547,18 @@ Requirements:
               borderRadius: '0.5rem',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}>
               <Globe style={{ width: '24px', height: '24px', color: 'white' }} />
             </div>
-            <div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>LinkedIn Article Hub</h1>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>Powered by HuggingFace AI</p>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Article Hub</h1>
+              <p style={{ fontSize: '0.7rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>by Claude</p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontSize: '0.95rem', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                {user?.name || 'User'}
-              </p>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>
-                LinkedIn Connected ✓
-              </p>
-            </div>
-            {hfApiKey && (
-              <button
-                onClick={() => setShowApiKeyInput(true)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '0.375rem',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                  fontSize: '0.875rem',
-                  color: '#4b5563',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s'
-                }}
-              >
-                🔑 Change Key
-              </button>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <button
               onClick={handleSignOut}
               style={{
@@ -609,18 +577,18 @@ Requirements:
               }}
             >
               <LogOut style={{ width: '1rem', height: '1rem' }} />
-              Sign Out
+              <span style={{ display: { xs: 'none', sm: 'inline' } }}>Sign Out</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div style={{ background: 'white', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '0', padding: '0 2rem' }}>
+      <div style={{ background: 'white', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: '64px', zIndex: 15 }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '0', padding: '0 1.5rem' }}>
           {[
             { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-            { id: 'create', label: editingArticleId ? 'Edit Article' : 'Create Article', icon: '⚡' }
+            { id: 'create', label: editingArticleId ? 'Edit' : 'Create', icon: '⚡' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -647,7 +615,8 @@ Requirements:
                 transition: 'all 0.2s',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '0.5rem',
+                whiteSpace: 'nowrap'
               }}
             >
               <span>{tab.icon}</span>
@@ -657,7 +626,7 @@ Requirements:
         </div>
       </div>
 
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 1.5rem' }}>
         {/* Dashboard View */}
         {view === 'dashboard' && (
           <div>
@@ -674,7 +643,7 @@ Requirements:
               <div style={{
                 background: 'white',
                 borderRadius: '1rem',
-                padding: '3rem',
+                padding: '2rem',
                 textAlign: 'center',
                 border: '2px dashed #e5e7eb'
               }}>
@@ -683,7 +652,7 @@ Requirements:
                   No articles yet
                 </p>
                 <p style={{ color: '#9ca3af', margin: '0 0 1.5rem 0' }}>
-                  Create your first article with AI in seconds
+                  Create your first article with Claude
                 </p>
                 <button
                   onClick={() => setView('create')}
@@ -716,7 +685,7 @@ Requirements:
                       overflow: 'hidden',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                       display: 'grid',
-                      gridTemplateColumns: '220px 1fr',
+                      gridTemplateColumns: 'minmax(180px, 1fr)',
                       gap: 0
                     }}>
                       <div style={{
@@ -725,7 +694,7 @@ Requirements:
                         alignItems: 'center',
                         justifyContent: 'center',
                         overflow: 'hidden',
-                        minHeight: '220px'
+                        minHeight: '180px'
                       }}>
                         <img 
                           src={article.image} 
@@ -740,7 +709,7 @@ Requirements:
                           <h3 style={{ fontSize: '1.125rem', fontWeight: '700', margin: '0 0 0.5rem 0', color: '#1f2937' }}>
                             {article.customTopic}
                           </h3>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                             <span style={{
                               fontSize: '0.75rem',
                               background: '#f0f4ff',
@@ -779,7 +748,8 @@ Requirements:
                           maxHeight: '3rem',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          margin: '0 0 1rem 0'
+                          margin: '0 0 1rem 0',
+                          fontSize: '0.95rem'
                         }}>
                           {article.content.substring(0, 150)}...
                         </p>
@@ -931,94 +901,26 @@ Requirements:
         {/* Create/Edit Article View */}
         {view === 'create' && (
           <div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: '700', margin: '0 0 1.5rem 0', color: '#1f2937' }}>
-              {editingArticleId ? '✏️ Edit Article' : '⚡ Create Article with AI'}
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: '0 0 1.5rem 0', color: '#1f2937' }}>
+              {editingArticleId ? '✏️ Edit Article' : '⚡ Create Article'}
             </h2>
 
             <div style={{
               background: 'white',
               borderRadius: '1rem',
-              padding: '2rem',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              maxWidth: '900px'
+              padding: '1.5rem',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
             }}>
-              {/* API Key Setup */}
-              {showApiKeyInput && (
-                <div style={{
-                  background: 'linear-gradient(135deg, #fef3c7 0%, #fef08a 100%)',
-                  border: '2px solid #f59e0b',
-                  borderRadius: '0.75rem',
-                  padding: '1.5rem',
-                  marginBottom: '2rem'
-                }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#d97706', margin: '0 0 1rem 0' }}>
-                    🔑 Setup Your HuggingFace API Key
-                  </h3>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
-                    Get your free HuggingFace API key to generate articles instantly.
-                  </p>
-                  <ol style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1rem 0', paddingLeft: '1.5rem' }}>
-                    <li>Visit <strong>huggingface.co</strong></li>
-                    <li>Sign up for free (no credit card needed)</li>
-                    <li>Go to Settings → Access Tokens</li>
-                    <li>Create a new token (read or write)</li>
-                    <li>Paste it below</li>
-                  </ol>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <input
-                      type="password"
-                      value={hfApiKey}
-                      onChange={(e) => {
-                        setHfApiKey(e.target.value);
-                        setApiKeyError('');
-                      }}
-                      placeholder="hf_..."
-                      style={{
-                        flex: 1,
-                        padding: '0.75rem 1rem',
-                        border: '1px solid #fcd34d',
-                        borderRadius: '0.5rem',
-                        fontSize: '0.95rem',
-                        fontFamily: 'monospace',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    <button
-                      onClick={saveApiKey}
-                      style={{
-                        padding: '0.75rem 1.5rem',
-                        background: '#f59e0b',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Save Key
-                    </button>
-                  </div>
-                  {apiKeyError && (
-                    <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: '0.75rem 0 0 0' }}>
-                      ❌ {apiKeyError}
-                    </p>
-                  )}
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.75rem 0 0 0' }}>
-                    🔒 Your key is stored locally in your browser, never sent to us.
-                  </p>
-                </div>
-              )}
-
-              {/* Step 1: Topic & Category */}
+              {/* Step 1: Topic */}
               <div style={{
                 background: 'linear-gradient(135deg, #f0f4ff 0%, #f5f3ff 100%)',
                 border: '2px solid #667eea',
                 borderRadius: '0.75rem',
                 padding: '1.5rem',
-                marginBottom: '2rem'
+                marginBottom: '1.5rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '20px' }}>1️⃣</span>
+                  <span style={{ fontSize: '18px' }}>1️⃣</span>
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#667eea', margin: 0 }}>
                     Define Your Article
                   </h3>
@@ -1044,14 +946,43 @@ Requirements:
                       padding: '0.75rem 1rem',
                       border: '1px solid #d1d5db',
                       borderRadius: '0.5rem',
-                      fontSize: '0.95rem',
+                      fontSize: '1rem',
                       fontFamily: 'inherit',
                       boxSizing: 'border-box'
                     }}
                   />
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
+                {/* Recent Topics */}
+                {recentTopics.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ fontSize: '0.75rem', fontWeight: '600', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
+                      Recent topics:
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {recentTopics.map((topic, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setManualArticle({ ...manualArticle, topic })}
+                          style={{
+                            padding: '0.375rem 0.75rem',
+                            background: '#fff',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '9999px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            color: '#4b5563',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {topic}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div>
                   <label style={{
                     display: 'block',
                     fontWeight: '600',
@@ -1059,7 +990,7 @@ Requirements:
                     color: '#1f2937',
                     fontSize: '0.875rem'
                   }}>
-                    Category *
+                    Category
                   </label>
                   <select
                     value={manualArticle.topicCategory}
@@ -1069,7 +1000,7 @@ Requirements:
                       padding: '0.75rem 1rem',
                       border: '1px solid #d1d5db',
                       borderRadius: '0.5rem',
-                      fontSize: '0.95rem',
+                      fontSize: '1rem',
                       fontFamily: 'inherit',
                       cursor: 'pointer',
                       background: 'white',
@@ -1089,210 +1020,199 @@ Requirements:
                 border: '2px solid #10b981',
                 borderRadius: '0.75rem',
                 padding: '1.5rem',
-                marginBottom: '2rem'
+                marginBottom: '1.5rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '20px' }}>2️⃣</span>
+                  <span style={{ fontSize: '18px' }}>2️⃣</span>
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#059669', margin: 0 }}>
-                    Generate with AI
+                    Generate with Claude
                   </h3>
                 </div>
 
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
-                  One click to generate a bilingual article in 10-20 seconds:
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1rem 0' }}>
+                  One click opens Claude with your prompt (250 words/language):
                 </p>
 
                 <button
-                  onClick={generateArticleWithHF}
-                  disabled={generating || !hfApiKey.trim() || !manualArticle.topic.trim()}
+                  onClick={copyPromptToClipboard}
+                  disabled={!manualArticle.topic.trim()}
                   style={{
-                    padding: '0.75rem 1.5rem',
-                    background: generating || !hfApiKey.trim() || !manualArticle.topic.trim() ? '#d1d5db' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    width: '100%',
+                    padding: '1rem',
+                    background: !manualArticle.topic.trim() ? '#d1d5db' : promptCopied ? '#10b981' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '0.5rem',
                     fontWeight: '600',
-                    fontSize: '0.95rem',
-                    cursor: generating || !hfApiKey.trim() || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
+                    fontSize: '1rem',
+                    cursor: !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.75rem'
+                    justifyContent: 'center',
+                    gap: '0.75rem',
+                    transition: 'all 0.2s'
                   }}
                 >
-                  {generating ? (
+                  {promptCopied ? (
                     <>
-                      <Loader style={{ width: '1.25rem', height: '1.25rem', animation: 'spin 1s linear infinite' }} />
-                      Generating (may take 10-20 seconds)...
+                      <Check style={{ width: '1.25rem', height: '1.25rem' }} />
+                      Copied! Opening Claude...
                     </>
                   ) : (
                     <>
                       <Zap style={{ width: '1.25rem', height: '1.25rem' }} />
-                      Generate Article
+                      Generate in Claude
                     </>
                   )}
                 </button>
-
-                {!hfApiKey.trim() && (
-                  <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: '0.75rem 0 0 0' }}>
-                    ⚠️ Please set your HuggingFace API key first
-                  </p>
-                )}
-
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '1rem 0 0 0' }}>
-                  ⏱️ Note: First request loads the model (may take 30-60 seconds). Subsequent requests are faster.
-                </p>
               </div>
 
-              {/* Step 3: Review Content */}
+              {/* Step 3: Paste Content */}
               <div style={{
                 background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)',
                 border: '2px solid #667eea',
                 borderRadius: '0.75rem',
                 padding: '1.5rem',
-                marginBottom: '2rem'
+                marginBottom: '1.5rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '20px' }}>3️⃣</span>
+                  <span style={{ fontSize: '18px' }}>3️⃣</span>
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#667eea', margin: 0 }}>
-                    Review & Edit Content
+                    Paste & Review
                   </h3>
                 </div>
 
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
-                  Edit or refine the generated bilingual content:
+                  Paste Claude's output (auto-parses EN & FR):
                 </p>
 
                 <textarea
                   value={manualArticle.content}
-                  onChange={(e) => setManualArticle({ ...manualArticle, content: e.target.value })}
+                  onChange={handleContentPaste}
                   placeholder={`=== ENGLISH ===
-[Generated content will appear here]
+[Paste your English article here]
 
 === FRENCH ===
-[Generated content will appear here]`}
+[Paste your French article here]`}
                   style={{
                     width: '100%',
-                    height: '250px',
+                    height: '200px',
                     padding: '1rem',
-                    border: '1px solid #93c5fd',
+                    border: contentValid ? '2px solid #10b981' : '1px solid #93c5fd',
                     borderRadius: '0.5rem',
                     fontFamily: 'monospace',
                     fontSize: '0.9rem',
                     lineHeight: '1.6',
                     resize: 'vertical',
                     boxSizing: 'border-box',
-                    color: '#1f2937'
+                    color: '#1f2937',
+                    background: contentValid ? '#f0fdf4' : '#fff'
                   }}
                 />
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.5rem 0 0 0' }}>
-                  {wordCount(manualArticle.content)} words total
-                </p>
+
+                {validationMessage && (
+                  <p style={{
+                    fontSize: '0.875rem',
+                    margin: '0.75rem 0 0 0',
+                    color: contentValid ? '#059669' : '#dc2626',
+                    fontWeight: '600'
+                  }}>
+                    {validationMessage}
+                  </p>
+                )}
+
+                {contentValid && (
+                  <button
+                    onClick={() => setShowPreview(!showPreview)}
+                    style={{
+                      marginTop: '1rem',
+                      padding: '0.5rem 1rem',
+                      background: '#fff',
+                      border: '2px solid #10b981',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      color: '#059669'
+                    }}
+                  >
+                    {showPreview ? '▼ Hide Preview' : '▶ Show Preview'}
+                  </button>
+                )}
+
+                {showPreview && contentValid && (
+                  <div style={{
+                    marginTop: '1rem',
+                    padding: '1rem',
+                    background: '#f9fafb',
+                    borderRadius: '0.5rem',
+                    maxHeight: '300px',
+                    overflow: 'auto'
+                  }}>
+                    <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
+                      Preview:
+                    </p>
+                    <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                      {parsedContent.en.substring(0, 300)}...
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Step 4: Image Selection */}
+              {/* Step 4: Image */}
               <div style={{
                 background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
                 border: '2px solid #10b981',
                 borderRadius: '0.75rem',
                 padding: '1.5rem',
-                marginBottom: '2rem'
+                marginBottom: '1.5rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '20px' }}>4️⃣</span>
+                  <span style={{ fontSize: '18px' }}>4️⃣</span>
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#059669', margin: 0 }}>
                     Select Cover Image
                   </h3>
                 </div>
 
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
-                  Auto-find relevant images or provide your own:
-                </p>
-
-                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={searchImages}
-                    disabled={searchingImages || !manualArticle.topic.trim()}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: searchingImages ? '#e5e7eb' : '#10b981',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontWeight: '600',
-                      fontSize: '0.875rem',
-                      cursor: searchingImages || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}
-                  >
-                    {searchingImages ? (
-                      <>
-                        <Loader style={{ width: '1rem', height: '1rem', animation: 'spin 1s linear infinite' }} />
-                        Searching...
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon style={{ width: '1rem', height: '1rem' }} />
-                        Find Images
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Manual Search Box */}
-                <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #86efac' }}>
-                  <label style={{
-                    display: 'block',
+                <button
+                  onClick={searchImages}
+                  disabled={searchingImages || !manualArticle.topic.trim()}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    background: searchingImages ? '#e5e7eb' : '#10b981',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '0.5rem',
                     fontWeight: '600',
-                    marginBottom: '0.5rem',
-                    color: '#1f2937',
-                    fontSize: '0.875rem'
-                  }}>
-                    Refine search (optional):
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <input
-                      type="text"
-                      value={customImageSearch}
-                      onChange={(e) => setCustomImageSearch(e.target.value)}
-                      placeholder="e.g., 'healthcare', 'technology', 'people'"
-                      onKeyPress={(e) => e.key === 'Enter' && searchImagesManual(customImageSearch)}
-                      style={{
-                        flex: 1,
-                        padding: '0.5rem 0.75rem',
-                        border: '1px solid #86efac',
-                        borderRadius: '0.375rem',
-                        fontSize: '0.875rem',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                    <button
-                      onClick={() => searchImagesManual(customImageSearch)}
-                      disabled={!customImageSearch.trim() || searchingImages}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: customImageSearch.trim() && !searchingImages ? '#10b981' : '#d1d5db',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '0.375rem',
-                        cursor: customImageSearch.trim() && !searchingImages ? 'pointer' : 'not-allowed',
-                        fontWeight: '600',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      Search
-                    </button>
-                  </div>
-                </div>
+                    fontSize: '0.95rem',
+                    cursor: searchingImages || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.75rem',
+                    marginBottom: '1rem'
+                  }}
+                >
+                  {searchingImages ? (
+                    <>
+                      <Loader style={{ width: '1.25rem', height: '1.25rem', animation: 'spin 1s linear infinite' }} />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+                      Find Images
+                    </>
+                  )}
+                </button>
 
                 {showImageSuggestions && (
                   <div style={{ marginBottom: '1rem' }}>
                     <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.75rem' }}>
                       Choose an image:
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.75rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '0.75rem' }}>
                       {suggestedImages.map((img, idx) => (
                         <div
                           key={idx}
@@ -1302,13 +1222,14 @@ Requirements:
                             borderRadius: '0.5rem',
                             overflow: 'hidden',
                             border: manualArticle.imageUrl === img.url ? '3px solid #10b981' : '2px solid #e5e7eb',
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            aspectRatio: '1'
                           }}
                         >
                           <img 
                             src={img.url} 
                             alt={img.alt}
-                            style={{ width: '100%', height: '100px', objectFit: 'cover', display: 'block' }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                           />
                         </div>
                       ))}
@@ -1317,61 +1238,33 @@ Requirements:
                 )}
 
                 {manualArticle.imageUrl && (
-                  <div style={{ marginBottom: '1rem' }}>
-                    <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.75rem' }}>
-                      Selected image:
-                    </p>
-                    <img 
-                      src={manualArticle.imageUrl} 
-                      alt="Selected"
-                      style={{ maxWidth: '200px', height: 'auto', borderRadius: '0.5rem', border: '2px solid #10b981' }}
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontWeight: '600',
-                    marginBottom: '0.5rem',
-                    color: '#1f2937',
-                    fontSize: '0.875rem'
-                  }}>
-                    Or paste image URL:
-                  </label>
-                  <input
-                    type="url"
-                    value={manualArticle.imageUrl}
-                    onChange={(e) => setManualArticle({ ...manualArticle, imageUrl: e.target.value })}
-                    placeholder="https://..."
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem 1rem',
-                      border: '1px solid #86efac',
-                      borderRadius: '0.5rem',
-                      fontSize: '0.95rem',
-                      fontFamily: 'inherit',
-                      boxSizing: 'border-box'
-                    }}
+                  <img 
+                    src={manualArticle.imageUrl} 
+                    alt="Selected"
+                    style={{ maxWidth: '150px', height: 'auto', borderRadius: '0.5rem', border: '2px solid #10b981', marginBottom: '1rem' }}
                   />
-                </div>
+                )}
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   onClick={createOrUpdateArticle}
+                  disabled={!contentValid}
                   style={{
-                    padding: '0.875rem 2rem',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    flex: 1,
+                    minWidth: '200px',
+                    padding: '1rem',
+                    background: !contentValid ? '#d1d5db' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '0.5rem',
                     fontWeight: '600',
-                    fontSize: '0.95rem',
-                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    cursor: !contentValid ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '0.75rem',
                     transition: 'all 0.2s'
                   }}
@@ -1394,13 +1287,15 @@ Requirements:
                     setView('dashboard');
                   }}
                   style={{
-                    padding: '0.875rem 2rem',
+                    flex: 1,
+                    minWidth: '200px',
+                    padding: '1rem',
                     background: '#f3f4f6',
                     color: '#4b5563',
                     border: '1px solid #d1d5db',
                     borderRadius: '0.5rem',
                     fontWeight: '600',
-                    fontSize: '0.95rem',
+                    fontSize: '1rem',
                     cursor: 'pointer'
                   }}
                 >
@@ -1420,21 +1315,16 @@ Requirements:
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
           }}>
             <div style={{
-              padding: '2rem',
+              padding: '1.5rem',
               borderBottom: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
               background: 'linear-gradient(135deg, #f0f4ff 0%, #f5f3ff 100%)'
             }}>
-              <div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>
-                  {selectedArticle.customTopic}
-                </h2>
-                <p style={{ color: '#6b7280', margin: '0.5rem 0 0 0' }}>
-                  {selectedArticle.categoryLabel}
-                </p>
-              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>
+                {selectedArticle.customTopic}
+              </h2>
               <button
                 onClick={() => setView('dashboard')}
                 style={{
@@ -1452,21 +1342,19 @@ Requirements:
               </button>
             </div>
 
-            <div style={{ padding: '2rem' }}>
-              <div style={{ marginBottom: '2rem' }}>
-                <img 
-                  src={selectedArticle.image} 
-                  alt={selectedArticle.customTopic}
-                  style={{
-                    width: '100%',
-                    maxHeight: '300px',
-                    borderRadius: '0.5rem',
-                    marginBottom: '1rem',
-                    objectFit: 'cover'
-                  }}
-                  onError={(e) => e.target.style.display = 'none'}
-                />
-              </div>
+            <div style={{ padding: '1.5rem' }}>
+              <img 
+                src={selectedArticle.image} 
+                alt={selectedArticle.customTopic}
+                style={{
+                  width: '100%',
+                  maxHeight: '250px',
+                  borderRadius: '0.5rem',
+                  marginBottom: '1.5rem',
+                  objectFit: 'cover'
+                }}
+                onError={(e) => e.target.style.display = 'none'}
+              />
 
               <p style={{
                 color: '#4b5563',
@@ -1481,8 +1369,7 @@ Requirements:
               <p style={{
                 fontSize: '0.875rem',
                 color: '#9ca3af',
-                marginTop: '2rem',
-                margin: '2rem 0 0 0'
+                margin: '1.5rem 0 0 0'
               }}>
                 {wordCount(selectedArticle.content)} words
               </p>
@@ -1494,6 +1381,11 @@ Requirements:
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+        @media (max-width: 768px) {
+          h1 { font-size: 1rem !important; }
+          h2 { font-size: 1.5rem !important; }
+          button { font-size: 0.9rem !important; }
         }
       `}</style>
     </div>
