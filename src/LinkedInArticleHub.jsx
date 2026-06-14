@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Image as ImageIcon, Zap, Check } from 'lucide-react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Image as ImageIcon, Zap, Copy, Check } from 'lucide-react';
 
 const LinkedInArticleHub = () => {
   // Authentication State
@@ -141,13 +141,6 @@ Requirements:
         window.open('https://claude.ai', '_blank');
       }, 500);
     });
-  };
-
-  // Add topic to recent
-  const addToRecentTopics = (topic) => {
-    const updated = [topic, ...recentTopics.filter(t => t !== topic)].slice(0, 5);
-    setRecentTopics(updated);
-    localStorage.setItem('recentTopics', JSON.stringify(updated));
   };
 
   // Extract key words from topic for better search
