@@ -111,16 +111,24 @@ Format your response EXACTLY like this:
 === FRENCH ===
 [Your French article here - MAXIMUM 700 words - VISUAL & COLORFUL]
 
-⚠️ STRICT WORD LIMIT: Each section MUST be under 700 words. Count carefully.
+⚠️ CRITICAL RULES:
+1. STRICT WORD LIMIT: Each section MUST be under 700 words. Count carefully.
+2. DO NOT INVENT SCENARIOS: Only use real, verifiable examples or well-known case studies
+3. DO NOT MAKE UP STATISTICS: Only cite real data from reputable sources, OR clearly mark as hypothetical
+4. IF UNSURE: Use general insights instead of specific examples - don't fabricate details
+5. NO FAKE COMPANIES OR PEOPLE: Don't create fictional case studies - use real ones or speak generally
 
 STRUCTURE (write naturally, don't use these labels in the article):
 1. Open with an attention-grabbing statement or question that makes people stop scrolling
 2. Explain why this topic matters right now and what business/personal impact it has
 3. Share 3-4 key insights or main points:
    • Use bullet points for clarity
-   • Include real examples or statistics where relevant
+   • Include REAL examples or statistics where relevant (only if you're confident they're true)
+   • If using an example, make sure it's a real, well-known case
    • Show how this applies in real situations
-4. Tell a specific story or case study that shows how this works in practice
+4. Tell a specific story or case study - ONLY if it's real and verifiable (or mark as "hypothetically")
+   - Real case studies are better, but general insights work too
+   - If you can't verify it, don't include it
 5. Share what readers can actually DO with this information - specific, actionable steps
 6. End with a thought-provoking question or invitation to share thoughts
 
@@ -169,7 +177,8 @@ IMPORTANT:
 - Don't write section headers as labels
 - Write smoothly and naturally
 - The reader shouldn't see "Hook:" or "Context:" 
-- Include at least one specific example or statistic
+- ONLY include real examples or general insights - NEVER fabricate case studies
+- ONLY cite statistics you're sure are real
 - COUNT YOUR WORDS! English section max 700, French section max 700`;
 
     navigator.clipboard.writeText(prompt).then(() => {
