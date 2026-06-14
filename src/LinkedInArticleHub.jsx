@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save} from 'lucide-react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save } from 'lucide-react';
 
 const LinkedInArticleHub = () => {
   // Authentication State
@@ -22,6 +22,10 @@ const LinkedInArticleHub = () => {
     imageUrl: ''
   });
 
+  // Prompt State
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+
   const topicCategories = [
     { id: 'ai-evolution', label: 'Evolution of AI' },
     { id: 'ai-workplace', label: 'AI in the Workplace' },
@@ -30,6 +34,50 @@ const LinkedInArticleHub = () => {
     { id: 'product-ownership', label: 'Product Ownership' },
     { id: 'development', label: 'Development' }
   ];
+
+  const defaultPrompt = (topic) => {
+    if (!topic.trim()) {
+      return `Write a professional LinkedIn article about a business or technology topic.
+
+Requirements:
+- Write in English first (300-350 words)
+- Then write the French translation (300-350 words)
+- Use clear, engaging language suitable for LinkedIn
+- Include actionable insights or takeaways
+- Separate clearly with "=== ENGLISH ===" and "=== FRENCH ===" headers
+- Make it informative but conversational
+- Focus on professional development or industry insights`;
+    }
+    return `Write a professional LinkedIn article about: "${topic}"
+
+Requirements:
+- Write in English first (300-350 words)
+- Then write the French translation (300-350 words)
+- Use clear, engaging language suitable for LinkedIn
+- Include actionable insights or takeaways
+- Separate clearly with "=== ENGLISH ===" and "=== FRENCH ===" headers
+- Make it informative but conversational
+
+Example format:
+=== ENGLISH ===
+[Your English article here...]
+
+=== FRENCH ===
+[Your French article here...]
+
+Please write both versions now.`;
+  };
+
+  const openClaudeWithPrompt = () => {
+    if (!manualArticle.topic.trim()) {
+      alert('Please enter a topic first');
+      return;
+    }
+    
+    const prompt = aiPrompt || defaultPrompt(manualArticle.topic);
+    const encodedPrompt = encodeURIComponent(prompt);
+    window.open(`https://claude.ai?q=${encodedPrompt}`, '_blank');
+  };
 
   // ==================== AUTHENTICATION ====================
   const handleLinkedInSignIn = async () => {
@@ -121,6 +169,8 @@ const LinkedInArticleHub = () => {
       contentFr: '',
       imageUrl: ''
     });
+    setAiPrompt('');
+    setShowPromptEditor(false);
     setEditingArticleId(null);
     setView('dashboard');
   };
@@ -145,6 +195,8 @@ const LinkedInArticleHub = () => {
       contentFr: '',
       imageUrl: ''
     });
+    setAiPrompt('');
+    setShowPromptEditor(false);
     setEditingArticleId(null);
   };
 
@@ -250,8 +302,9 @@ const LinkedInArticleHub = () => {
               What you can do
             </h3>
             {[
-              'Create articles in English & French',
+              'Generate articles with Claude AI',
               'Edit articles anytime',
+              'Customize AI prompts',
               'Manage approval workflow',
               'Publish directly to LinkedIn'
             ].map((item, idx) => (
@@ -259,7 +312,7 @@ const LinkedInArticleHub = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.75rem',
-                marginBottom: idx < 3 ? '0.75rem' : 0,
+                marginBottom: idx < 4 ? '0.75rem' : 0,
                 fontSize: '0.95rem',
                 color: '#4b5563'
               }}>
@@ -342,7 +395,7 @@ const LinkedInArticleHub = () => {
             </div>
             <div>
               <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>LinkedIn Article Hub</h1>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>Bilingual content platform</p>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>AI-powered bilingual content platform</p>
             </div>
           </div>
 
@@ -384,7 +437,7 @@ const LinkedInArticleHub = () => {
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '0', padding: '0 2rem' }}>
           {[
             { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-            { id: 'create', label: editingArticleId ? 'Edit Article' : 'Create Article', icon: editingArticleId ? '✏️' : '✏️' }
+            { id: 'create', label: editingArticleId ? 'Edit Article' : 'Create Article', icon: editingArticleId ? '✏️' : '🤖' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -447,7 +500,7 @@ const LinkedInArticleHub = () => {
                   No articles yet
                 </p>
                 <p style={{ color: '#9ca3af', margin: '0 0 1.5rem 0' }}>
-                  Create your first article to get started
+                  Create your first article with AI assistance
                 </p>
                 <button
                   onClick={() => setView('create')}
@@ -696,7 +749,7 @@ const LinkedInArticleHub = () => {
         {view === 'create' && (
           <div>
             <h2 style={{ fontSize: '1.75rem', fontWeight: '700', margin: '0 0 1.5rem 0', color: '#1f2937' }}>
-              {editingArticleId ? '✏️ Edit Article' : '✏️ Create New Article'}
+              {editingArticleId ? '✏️ Edit Article' : '🤖 Create Article with Claude AI'}
             </h2>
 
             <div style={{
@@ -706,6 +759,99 @@ const LinkedInArticleHub = () => {
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               maxWidth: '900px'
             }}>
+              {/* AI Generation Section */}
+              <div style={{
+                background: 'linear-gradient(135deg, #f0f4ff 0%, #f5f3ff 100%)',
+                border: '2px solid #667eea',
+                borderRadius: '0.75rem',
+                padding: '1.5rem',
+                marginBottom: '2rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '20px' }}>✨</span>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#667eea', margin: 0 }}>
+                    Generate with Claude AI
+                  </h3>
+                </div>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1rem 0' }}>
+                  Describe your article topic and Claude will write both English and French versions for you!
+                </p>
+
+                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setShowPromptEditor(!showPromptEditor)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#fff',
+                      border: '2px solid #667eea',
+                      borderRadius: '0.5rem',
+                      color: '#667eea',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    ⚙️ {showPromptEditor ? 'Hide' : 'Edit'} Prompt
+                  </button>
+
+                  <button
+                    onClick={openClaudeWithPrompt}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '0.5rem',
+                      fontWeight: '600',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    🤖 Generate Article
+                  </button>
+                </div>
+
+                {showPromptEditor && (
+                  <div style={{
+                    background: '#fff',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.5rem',
+                    padding: '1rem'
+                  }}>
+                    <label style={{
+                      display: 'block',
+                      fontWeight: '600',
+                      marginBottom: '0.5rem',
+                      color: '#1f2937',
+                      fontSize: '0.875rem'
+                    }}>
+                      Custom Prompt (Leave blank to use default)
+                    </label>
+                    <textarea
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder={defaultPrompt(manualArticle.topic || '[Your Topic]')}
+                      style={{
+                        width: '100%',
+                        height: '150px',
+                        padding: '0.75rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.875rem',
+                        fontFamily: 'monospace',
+                        resize: 'vertical',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.5rem 0 0 0' }}>
+                      Customize the prompt Claude will use to generate your article. Leave blank to use the default.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Article Topic */}
               <div style={{ marginBottom: '2rem' }}>
                 <label style={{
@@ -790,7 +936,7 @@ const LinkedInArticleHub = () => {
                 <textarea
                   value={manualArticle.contentEn}
                   onChange={(e) => setManualArticle({ ...manualArticle, contentEn: e.target.value })}
-                  placeholder="Paste or write your English article here..."
+                  placeholder="Paste your English article here (generated by Claude)..."
                   style={{
                     width: '100%',
                     height: '280px',
@@ -827,7 +973,7 @@ const LinkedInArticleHub = () => {
                 <textarea
                   value={manualArticle.contentFr}
                   onChange={(e) => setManualArticle({ ...manualArticle, contentFr: e.target.value })}
-                  placeholder="Paste or write your French article here..."
+                  placeholder="Paste your French article here (generated by Claude)..."
                   style={{
                     width: '100%',
                     height: '280px',
