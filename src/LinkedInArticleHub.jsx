@@ -827,12 +827,11 @@ Please write both versions now.`;
                       color: '#1f2937',
                       fontSize: '0.875rem'
                     }}>
-                      Custom Prompt (Leave blank to use default)
+                      Custom Prompt (Edit as needed)
                     </label>
                     <textarea
-                      value={aiPrompt}
+                      value={aiPrompt || defaultPrompt(manualArticle.topic || 'your topic')}
                       onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder={defaultPrompt(manualArticle.topic || '[Your Topic]')}
                       style={{
                         width: '100%',
                         height: '150px',
@@ -842,11 +841,12 @@ Please write both versions now.`;
                         fontSize: '0.875rem',
                         fontFamily: 'monospace',
                         resize: 'vertical',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        color: '#1f2937'
                       }}
                     />
                     <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.5rem 0 0 0' }}>
-                      Customize the prompt Claude will use to generate your article. Leave blank to use the default.
+                      Edit the prompt and copy it to use in Claude. Select all (Ctrl+A) and copy (Ctrl+C).
                     </p>
                   </div>
                 )}
