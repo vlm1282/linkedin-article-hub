@@ -54,9 +54,9 @@ const LinkedInArticleHub = () => {
       const enWords = en.split(/\s+/).length;
       const frWords = fr.split(/\s+/).length;
 
-      // Check if within 400-800 word range (flexible for 500-700 target)
-      const enValid = enWords >= 400 && enWords <= 800;
-      const frValid = frWords >= 400 && frWords <= 800;
+      // Check if within 400-700 word range (strict max 700)
+      const enValid = enWords >= 400 && enWords <= 700;
+      const frValid = frWords >= 400 && frWords <= 700;
 
       if (enValid && frValid) {
         setContentValid(true);
@@ -65,7 +65,7 @@ const LinkedInArticleHub = () => {
         return true;
       } else {
         setContentValid(false);
-        setValidationMessage(`⚠️ EN: ${enWords} words (need 400-800), FR: ${frWords} words (need 400-800)`);
+        setValidationMessage(`⚠️ EN: ${enWords} words (need 400-700), FR: ${frWords} words (need 400-700)`);
         return false;
       }
     } else {
@@ -106,42 +106,71 @@ const LinkedInArticleHub = () => {
 Format your response EXACTLY like this:
 
 === ENGLISH ===
-[Your English article here - 500-700 words - COMPREHENSIVE & ENGAGING]
+[Your English article here - MAXIMUM 700 words - VISUAL & COLORFUL]
 
 === FRENCH ===
-[Your French article here - 500-700 words - COMPREHENSIVE & ENGAGING]
+[Your French article here - MAXIMUM 700 words - VISUAL & COLORFUL]
+
+⚠️ STRICT WORD LIMIT: Each section MUST be under 700 words. Count carefully.
 
 STRUCTURE (write naturally, don't use these labels in the article):
-1. Open with an attention-grabbing statement or question that makes people want to read more
+1. Open with an attention-grabbing statement or question that makes people stop scrolling
 2. Explain why this topic matters right now and what business/personal impact it has
 3. Share 3-4 key insights or main points:
    • Use bullet points for clarity
    • Include real examples or statistics where relevant
    • Show how this applies in real situations
-4. Tell a specific story or case study that shows how this works in practice (2-3 paragraphs)
+4. Tell a specific story or case study that shows how this works in practice
 5. Share what readers can actually DO with this information - specific, actionable steps
 6. End with a thought-provoking question or invitation to share thoughts
 
-VISUAL ELEMENTS:
-✨ Use 2-3 emojis strategically throughout (not overdone, keep it professional)
-• Use 3-4 bullet points for main insights
-📌 Short paragraphs (2-3 sentences max) for easy reading
-→ Use arrows/symbols occasionally for emphasis or flow
-💡 Make it skimmable but substantial
+🎨 MAKE IT VISUAL & COLORFUL - Use LOTS of emojis:
+✨ Use 8-12 emojis throughout (place them strategically, not randomly)
+   Examples: 🚀 for innovation, 💡 for ideas, 📊 for data, 🎯 for goals, 
+            ⚡ for quick wins, 🔥 for important points, 💪 for strength,
+            🌟 for excellence, 📈 for growth, 🎬 for stories, etc.
+   
+• Use 4-5 bullet points or dash lists (with emojis before each)
+├─ Use dividers like these: ─────── or ▼ or ─●─ to separate sections
+→ Use arrows (→, ⟹, ↓) to show progression or flow
+│ Use pipe symbols for visual emphasis
+⭐ Highlight key numbers or statistics with symbols
+🔔 Mark important takeaways with emojis
+
+📝 FORMATTING FOR VISUAL IMPACT:
+- Add 1-2 line breaks between ideas (visual breathing room)
+- Use dashes or arrows (→) to introduce key points
+- CAPITALIZE important words or phrases occasionally (but not too much)
+- Start sentences with relevant emojis when it feels natural
+- Use symbols like ✓ ✗ ★ ● ◆ for lists
 
 TONE & STYLE:
 - Professional yet conversational (like talking to a colleague)
 - Informative and insightful
 - Optimistic and forward-thinking
 - Suitable for LinkedIn audience
-- Aim for ~500-700 words (comprehensive but still readable)
-- Write as if you're sharing valuable knowledge with peers, not lecturing
+- Make it VISUALLY ENGAGING - the reader should see colors (emojis) not just gray text
+- Write as if you're sharing valuable knowledge with peers
+- Be energetic and enthusiastic about the topic
+
+EXAMPLES OF VISUAL STRUCTURE:
+"🚀 Three ways to unlock growth:
+├─ 💡 Idea #1: Something powerful
+├─ ⚡ Idea #2: Something quick
+└─ 🎯 Idea #3: Something strategic"
+
+Or:
+
+"Here's what changed:
+✗ Old way: Boring and slow
+✓ New way: Fast and powerful"
 
 IMPORTANT:
-- Don't write "Hook:" or "Context:" or "Key Insights:" - these are just structure notes
-- Write smoothly and naturally - the reader shouldn't see these labels
-- Use line breaks between sections for visual breathing room
-- Include at least one specific example or statistic`;
+- Don't write section headers as labels
+- Write smoothly and naturally
+- The reader shouldn't see "Hook:" or "Context:" 
+- Include at least one specific example or statistic
+- COUNT YOUR WORDS! English section max 700, French section max 700`;
 
     navigator.clipboard.writeText(prompt).then(() => {
       setPromptCopied(true);
@@ -189,7 +218,7 @@ IMPORTANT:
 
         try {
           const response = await fetch(
-            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&client_id=YOUR_UNSPLASH_API_KEY`
+            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&client_id=KgLPjRekFKSOZTbDbgzEtM12TD76d3lAWRvUAplyYQY`
           );
 
           if (response.ok) {
@@ -243,7 +272,7 @@ IMPORTANT:
     setSearchingImages(true);
     try {
       const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=25&client_id=KgLPjRekFKSOZTbDbgzEtM12TD76d3lAWRvUAplyYQY`
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=25&client_id=YOUR_UNSPLASH_API_KEY`
       );
 
       if (response.ok) {
