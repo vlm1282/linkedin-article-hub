@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Copy, Image as ImageIcon } from 'lucide-react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Copy, Image as ImageIcon, Zap } from 'lucide-react';
 
 const LinkedInArticleHub = () => {
   // Authentication State
@@ -17,20 +17,21 @@ const LinkedInArticleHub = () => {
   const [manualArticle, setManualArticle] = useState({
     topic: '',
     topicCategory: 'ai-evolution',
-    content: '', // Single bilingual content
+    content: '',
     imageUrl: ''
   });
+
+  // Generation State
+  const [generating, setGenerating] = useState(false);
+  const [groqApiKey, setGroqApiKey] = useState(localStorage.getItem('groqApiKey') || '');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!localStorage.getItem('groqApiKey'));
+  const [apiKeyError, setApiKeyError] = useState('');
 
   // Image State
   const [searchingImages, setSearchingImages] = useState(false);
   const [suggestedImages, setSuggestedImages] = useState([]);
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
   const [customImageSearch, setCustomImageSearch] = useState('');
-
-  // Prompt State
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [showPromptEditor, setShowPromptEditor] = useState(false);
-  const [promptCopied, setPromptCopied] = useState(false);
 
   const topicCategories = [
     { id: 'ai-evolution', label: 'Evolution of AI' },
@@ -41,55 +42,99 @@ const LinkedInArticleHub = () => {
     { id: 'development', label: 'Development' }
   ];
 
-  const defaultPrompt = (topic) => {
-    if (!topic.trim()) {
-      return `Write a professional LinkedIn article about a business or technology topic.
-
-Format your response EXACTLY like this:
-
-=== ENGLISH ===
-[Your English article here - 300-350 words]
-
-=== FRENCH ===
-[Your French article here - 300-350 words]
-
-Requirements:
-- Use clear, engaging language suitable for LinkedIn
-- Include actionable insights
-- Make it informative but conversational
-- Both versions should be exactly 300-350 words`;
+  // Save API key to localStorage
+  const saveApiKey = () => {
+    if (!groqApiKey.trim()) {
+      setApiKeyError('Please enter your Groq API key');
+      return;
     }
-    return `Write a professional LinkedIn article about: "${topic}"
-
-Format your response EXACTLY like this:
-
-=== ENGLISH ===
-[Your English article here - 300-350 words]
-
-=== FRENCH ===
-[Your French article here - 300-350 words]
-
-Requirements:
-- Use clear, engaging language suitable for LinkedIn
-- Include actionable insights
-- Make it informative but conversational
-- Both versions should be exactly 300-350 words`;
+    localStorage.setItem('groqApiKey', groqApiKey);
+    setShowApiKeyInput(false);
+    setApiKeyError('');
+    alert('✅ API key saved!');
   };
 
-  // Copy prompt to clipboard
-  const copyPromptToClipboard = () => {
-    const prompt = aiPrompt || defaultPrompt(manualArticle.topic);
-    navigator.clipboard.writeText(prompt).then(() => {
-      setPromptCopied(true);
-      setTimeout(() => setPromptCopied(false), 2000);
-    });
+  // Generate article using Groq
+  const generateArticleWithGroq = async () => {
+    if (!manualArticle.topic.trim()) {
+      alert('Please enter a topic first');
+      return;
+    }
+
+    if (!groqApiKey.trim()) {
+      setShowApiKeyInput(true);
+      alert('Please add your Groq API key first');
+      return;
+    }
+
+    setGenerating(true);
+
+    const prompt = `Write a professional LinkedIn article about: "${manualArticle.topic}"
+
+Format your response EXACTLY like this:
+
+=== ENGLISH ===
+[Your English article here - 300-350 words]
+
+=== FRENCH ===
+[Your French article here - 300-350 words]
+
+Requirements:
+- Use clear, engaging language suitable for LinkedIn
+- Include actionable insights
+- Make it informative but conversational
+- Both versions should be exactly 300-350 words
+- Focus on professional development or industry insights`;
+
+    try {
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'mixtral-8x7b-32768',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1500
+        })
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setShowApiKeyInput(true);
+          setApiKeyError('Invalid API key. Please check and try again.');
+          setGenerating(false);
+          return;
+        }
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const generatedText = data.choices[0].message.content;
+
+      // Set the generated content
+      setManualArticle({ ...manualArticle, content: generatedText });
+      alert('✅ Article generated! Review and edit if needed.');
+    } catch (error) {
+      console.error('Generation error:', error);
+      alert(`❌ Generation failed: ${error.message}\n\nMake sure:\n1. Your API key is correct\n2. You have enough quota`);
+    }
+
+    setGenerating(false);
   };
 
   // Extract key words from topic for better search
   const extractKeywords = (topic) => {
     const stopWords = ['the', 'in', 'and', 'or', 'of', 'to', 'a', 'an', 'is', 'are'];
     const words = topic.toLowerCase().split(/\s+/).filter(word => !stopWords.includes(word) && word.length > 3);
-    return words.slice(0, 3); // Get top 3 keywords
+    return words.slice(0, 3);
   };
 
   // Search for images on Unsplash with multiple queries
@@ -101,19 +146,17 @@ Requirements:
 
     setSearchingImages(true);
     try {
-      // Get keywords from topic
       const keywords = extractKeywords(manualArticle.topic);
       const searchQueries = [
-        manualArticle.topic, // First try the full topic
-        keywords.join(' '), // Then try main keywords
-        manualArticle.topicCategory.replace(/-/g, ' ') // Then try the category
+        manualArticle.topic,
+        keywords.join(' '),
+        manualArticle.topicCategory.replace(/-/g, ' ')
       ];
 
       let allImages = [];
 
-      // Try each search query
       for (const query of searchQueries) {
-        if (allImages.length >= 12) break; // Stop if we have enough images
+        if (allImages.length >= 12) break;
 
         try {
           const response = await fetch(
@@ -133,12 +176,10 @@ Requirements:
         }
       }
 
-      // Remove duplicates
       const uniqueImages = allImages.filter((img, idx, arr) => 
         arr.findIndex(i => i.url === img.url) === idx
       ).slice(0, 12);
 
-      // Fallback images if search fails
       const fallbackImages = [
         { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Professional' },
         { url: 'https://images.unsplash.com/photo-1677442d019e157cab9fdb4e58b2c0edb78542ca8?w=500&h=300&fit=crop', alt: 'Business' },
@@ -163,11 +204,6 @@ Requirements:
       setShowImageSuggestions(true);
     }
     setSearchingImages(false);
-  };
-
-  const selectImage = (url) => {
-    setManualArticle({ ...manualArticle, imageUrl: url });
-    setShowImageSuggestions(false);
   };
 
   // Manual image search with custom keywords
@@ -202,16 +238,9 @@ Requirements:
     setSearchingImages(false);
   };
 
-  // Open Claude with prompt
-  const openClaudeWithPrompt = () => {
-    if (!manualArticle.topic.trim()) {
-      alert('Please enter a topic first');
-      return;
-    }
-    
-    const prompt = aiPrompt || defaultPrompt(manualArticle.topic);
-    const encodedPrompt = encodeURIComponent(prompt);
-    window.open(`https://claude.ai?q=${encodedPrompt}`, '_blank');
+  const selectImage = (url) => {
+    setManualArticle({ ...manualArticle, imageUrl: url });
+    setShowImageSuggestions(false);
   };
 
   // ==================== AUTHENTICATION ====================
@@ -240,18 +269,16 @@ Requirements:
 
   // ==================== ARTICLE MANAGEMENT ====================
   const createOrUpdateArticle = () => {
-    // Validation
     if (!manualArticle.topic.trim()) {
       alert('Please enter a topic');
       return;
     }
     if (!manualArticle.content.trim()) {
-      alert('Please paste the bilingual content');
+      alert('Please paste or generate the bilingual content');
       return;
     }
 
     if (editingArticleId) {
-      // UPDATE existing article
       setArticles(articles.map(article => {
         if (article.id === editingArticleId) {
           return {
@@ -267,7 +294,6 @@ Requirements:
       }));
       alert('✅ Article updated successfully!');
     } else {
-      // CREATE new article
       const newArticle = {
         id: Date.now(),
         customTopic: manualArticle.topic,
@@ -285,15 +311,12 @@ Requirements:
       alert('✅ Article created successfully!');
     }
     
-    // Reset form
     setManualArticle({
       topic: '',
       topicCategory: 'ai-evolution',
       content: '',
       imageUrl: ''
     });
-    setAiPrompt('');
-    setShowPromptEditor(false);
     setSuggestedImages([]);
     setShowImageSuggestions(false);
     setEditingArticleId(null);
@@ -318,8 +341,6 @@ Requirements:
       content: '',
       imageUrl: ''
     });
-    setAiPrompt('');
-    setShowPromptEditor(false);
     setSuggestedImages([]);
     setShowImageSuggestions(false);
     setEditingArticleId(null);
@@ -412,7 +433,7 @@ Requirements:
             LinkedIn Article Hub
           </h1>
           <p style={{ color: '#6b7280', margin: '0', fontSize: '0.95rem' }}>
-            Create, approve, and publish bilingual articles
+            AI-powered bilingual content creation
           </p>
 
           <div style={{
@@ -427,7 +448,7 @@ Requirements:
               What you can do
             </h3>
             {[
-              'Generate articles with Claude AI',
+              'Generate articles instantly with AI',
               'Auto-suggest relevant images',
               'Edit articles anytime',
               'Manage approval workflow',
@@ -520,7 +541,7 @@ Requirements:
             </div>
             <div>
               <h1 style={{ fontSize: '1.25rem', fontWeight: '700', margin: 0, color: '#1f2937' }}>LinkedIn Article Hub</h1>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>AI-powered bilingual content</p>
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0.25rem 0 0 0' }}>Powered by Groq AI</p>
             </div>
           </div>
 
@@ -562,7 +583,7 @@ Requirements:
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', gap: '0', padding: '0 2rem' }}>
           {[
             { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-            { id: 'create', label: editingArticleId ? 'Edit Article' : 'Create Article', icon: '🤖' }
+            { id: 'create', label: editingArticleId ? 'Edit Article' : 'Create Article', icon: '⚡' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -620,12 +641,12 @@ Requirements:
                 textAlign: 'center',
                 border: '2px dashed #e5e7eb'
               }}>
-                <Globe style={{ width: '3rem', height: '3rem', color: '#d1d5db', margin: '0 auto 1rem' }} />
+                <Zap style={{ width: '3rem', height: '3rem', color: '#d1d5db', margin: '0 auto 1rem' }} />
                 <p style={{ fontSize: '1.125rem', color: '#6b7280', margin: '0 0 1rem 0' }}>
                   No articles yet
                 </p>
                 <p style={{ color: '#9ca3af', margin: '0 0 1.5rem 0' }}>
-                  Create your first article with AI assistance
+                  Create your first article with AI in seconds
                 </p>
                 <button
                   onClick={() => setView('create')}
@@ -874,7 +895,7 @@ Requirements:
         {view === 'create' && (
           <div>
             <h2 style={{ fontSize: '1.75rem', fontWeight: '700', margin: '0 0 1.5rem 0', color: '#1f2937' }}>
-              {editingArticleId ? '✏️ Edit Article' : '🤖 Create Article'}
+              {editingArticleId ? '✏️ Edit Article' : '⚡ Create Article with AI'}
             </h2>
 
             <div style={{
@@ -884,6 +905,72 @@ Requirements:
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               maxWidth: '900px'
             }}>
+              {/* API Key Setup */}
+              {showApiKeyInput && (
+                <div style={{
+                  background: 'linear-gradient(135deg, #fef3c7 0%, #fef08a 100%)',
+                  border: '2px solid #f59e0b',
+                  borderRadius: '0.75rem',
+                  padding: '1.5rem',
+                  marginBottom: '2rem'
+                }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#d97706', margin: '0 0 1rem 0' }}>
+                    🔑 Setup Your Groq API Key
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
+                    Get your free Groq API key to generate articles instantly.
+                  </p>
+                  <ol style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 1rem 0', paddingLeft: '1.5rem' }}>
+                    <li>Visit <strong>console.groq.com</strong></li>
+                    <li>Sign up for free (no credit card needed)</li>
+                    <li>Create an API key</li>
+                    <li>Paste it below</li>
+                  </ol>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <input
+                      type="password"
+                      value={groqApiKey}
+                      onChange={(e) => {
+                        setGroqApiKey(e.target.value);
+                        setApiKeyError('');
+                      }}
+                      placeholder="gsk_..."
+                      style={{
+                        flex: 1,
+                        padding: '0.75rem 1rem',
+                        border: '1px solid #fcd34d',
+                        borderRadius: '0.5rem',
+                        fontSize: '0.95rem',
+                        fontFamily: 'monospace',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <button
+                      onClick={saveApiKey}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: '#f59e0b',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '0.5rem',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Save Key
+                    </button>
+                  </div>
+                  {apiKeyError && (
+                    <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: '0.75rem 0 0 0' }}>
+                      ❌ {apiKeyError}
+                    </p>
+                  )}
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.75rem 0 0 0' }}>
+                    🔒 Your key is stored locally in your browser, never sent to us.
+                  </p>
+                </div>
+              )}
+
               {/* Step 1: Topic & Category */}
               <div style={{
                 background: 'linear-gradient(135deg, #f0f4ff 0%, #f5f3ff 100%)',
@@ -899,7 +986,6 @@ Requirements:
                   </h3>
                 </div>
 
-                {/* Topic */}
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{
                     display: 'block',
@@ -927,7 +1013,6 @@ Requirements:
                   />
                 </div>
 
-                {/* Category */}
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{
                     display: 'block',
@@ -960,114 +1045,63 @@ Requirements:
                 </div>
               </div>
 
-              {/* Step 2: Generate with Claude */}
+              {/* Step 2: Generate */}
               <div style={{
-                background: 'linear-gradient(135deg, #fef3c7 0%, #fef08a 100%)',
-                border: '2px solid #f59e0b',
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                border: '2px solid #10b981',
                 borderRadius: '0.75rem',
                 padding: '1.5rem',
                 marginBottom: '2rem'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                   <span style={{ fontSize: '20px' }}>2️⃣</span>
-                  <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#d97706', margin: 0 }}>
-                    Generate Content with Claude
+                  <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#059669', margin: 0 }}>
+                    Generate with AI
                   </h3>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => setShowPromptEditor(!showPromptEditor)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: '#fff',
-                      border: '2px solid #f59e0b',
-                      borderRadius: '0.5rem',
-                      color: '#d97706',
-                      fontWeight: '600',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    ⚙️ {showPromptEditor ? 'Hide' : 'Edit'} Prompt
-                  </button>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
+                  One click to generate a bilingual article in 2-3 seconds:
+                </p>
 
-                  <button
-                    onClick={openClaudeWithPrompt}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '0.5rem',
-                      fontWeight: '600',
-                      fontSize: '0.875rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    🤖 Open Claude
-                  </button>
-                </div>
-
-                {showPromptEditor && (
-                  <div style={{
-                    background: '#fff',
-                    border: '1px solid #fcd34d',
+                <button
+                  onClick={generateArticleWithGroq}
+                  disabled={generating || !groqApiKey.trim() || !manualArticle.topic.trim()}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: generating || !groqApiKey.trim() || !manualArticle.topic.trim() ? '#d1d5db' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: '#fff',
+                    border: 'none',
                     borderRadius: '0.5rem',
-                    padding: '1rem'
-                  }}>
-                    <label style={{
-                      display: 'block',
-                      fontWeight: '600',
-                      marginBottom: '0.5rem',
-                      color: '#1f2937',
-                      fontSize: '0.875rem'
-                    }}>
-                      Custom Prompt
-                    </label>
-                    <textarea
-                      value={aiPrompt || defaultPrompt(manualArticle.topic || 'your topic')}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '120px',
-                        padding: '0.75rem',
-                        border: '1px solid #fcd34d',
-                        borderRadius: '0.375rem',
-                        fontSize: '0.875rem',
-                        fontFamily: 'monospace',
-                        resize: 'vertical',
-                        boxSizing: 'border-box',
-                        color: '#1f2937'
-                      }}
-                    />
-                    <button
-                      onClick={copyPromptToClipboard}
-                      style={{
-                        marginTop: '0.75rem',
-                        padding: '0.5rem 1rem',
-                        background: promptCopied ? '#10b981' : '#667eea',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '0.375rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}
-                    >
-                      <Copy style={{ width: '1rem', height: '1rem' }} />
-                      {promptCopied ? 'Copied!' : 'Copy to Clipboard'}
-                    </button>
-                  </div>
+                    fontWeight: '600',
+                    fontSize: '0.95rem',
+                    cursor: generating || !groqApiKey.trim() || !manualArticle.topic.trim() ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem'
+                  }}
+                >
+                  {generating ? (
+                    <>
+                      <Loader style={{ width: '1.25rem', height: '1.25rem', animation: 'spin 1s linear infinite' }} />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Zap style={{ width: '1.25rem', height: '1.25rem' }} />
+                      Generate Article
+                    </>
+                  )}
+                </button>
+
+                {!groqApiKey.trim() && (
+                  <p style={{ fontSize: '0.875rem', color: '#ef4444', margin: '0.75rem 0 0 0' }}>
+                    ⚠️ Please set your Groq API key first
+                  </p>
                 )}
               </div>
 
-              {/* Step 3: Paste Content */}
+              {/* Step 3: Review Content */}
               <div style={{
                 background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)',
                 border: '2px solid #667eea',
@@ -1078,22 +1112,22 @@ Requirements:
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                   <span style={{ fontSize: '20px' }}>3️⃣</span>
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#667eea', margin: 0 }}>
-                    Paste Bilingual Content
+                    Review & Edit Content
                   </h3>
                 </div>
 
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', margin: '0 0 1rem 0' }}>
-                  Paste Claude's output (includes both English and French sections):
+                  Edit or refine the generated bilingual content:
                 </p>
 
                 <textarea
                   value={manualArticle.content}
                   onChange={(e) => setManualArticle({ ...manualArticle, content: e.target.value })}
                   placeholder={`=== ENGLISH ===
-[Your English article here]
+[Generated content will appear here]
 
 === FRENCH ===
-[Your French article here]`}
+[Generated content will appear here]`}
                   style={{
                     width: '100%',
                     height: '250px',
@@ -1209,9 +1243,6 @@ Requirements:
                       Search
                     </button>
                   </div>
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.5rem 0 0 0' }}>
-                    Type keywords and press Enter or click Search to refine results
-                  </p>
                 </div>
 
                 {showImageSuggestions && (
@@ -1219,7 +1250,7 @@ Requirements:
                     <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.75rem' }}>
                       Choose an image:
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.75rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.75rem' }}>
                       {suggestedImages.map((img, idx) => (
                         <div
                           key={idx}
