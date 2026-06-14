@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Image as ImageIcon, Zap, Check } from 'lucide-react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Image as ImageIcon, Zap, Copy, Check } from 'lucide-react';
 
 const LinkedInArticleHub = () => {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
   const [authenticating, setAuthenticating] = useState(false);
 
   // App State
@@ -23,7 +22,6 @@ const LinkedInArticleHub = () => {
 
   // Smart features
   const [recentTopics, setRecentTopics] = useState(JSON.parse(localStorage.getItem('recentTopics') || '[]'));
-  const [draftTopic, setDraftTopic] = useState('');
   const [promptCopied, setPromptCopied] = useState(false);
   const [contentValid, setContentValid] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
@@ -34,7 +32,6 @@ const LinkedInArticleHub = () => {
   const [searchingImages, setSearchingImages] = useState(false);
   const [suggestedImages, setSuggestedImages] = useState([]);
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
-  const [customImageSearch, setCustomImageSearch] = useState('');
 
   const topicCategories = [
     { id: 'ai-evolution', label: 'Evolution of AI' },
@@ -44,13 +41,6 @@ const LinkedInArticleHub = () => {
     { id: 'product-ownership', label: 'Product Ownership' },
     { id: 'development', label: 'Development' }
   ];
-
-  // Auto-save draft topic
-  useEffect(() => {
-    if (manualArticle.topic.trim()) {
-      setDraftTopic(manualArticle.topic);
-    }
-  }, [manualArticle.topic]);
 
   // Validate and parse pasted content
   const validateAndParseContent = (text) => {
@@ -82,6 +72,13 @@ const LinkedInArticleHub = () => {
       setValidationMessage('❌ Format error. Make sure to include === ENGLISH === and === FRENCH === markers');
       return false;
     }
+  };
+
+  // Add topic to recent
+  const addToRecentTopics = (topic) => {
+    const updated = [topic, ...recentTopics.filter(t => t !== topic)].slice(0, 5);
+    setRecentTopics(updated);
+    localStorage.setItem('recentTopics', JSON.stringify(updated));
   };
 
   const handleContentPaste = (e) => {
@@ -225,35 +222,6 @@ Requirements:
     setSearchingImages(false);
   };
 
-  const searchImagesManual = async (searchTerm) => {
-    if (!searchTerm.trim()) {
-      alert('Please enter search terms');
-      return;
-    }
-
-    setSearchingImages(true);
-    try {
-      const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=12&client_id=YOUR_UNSPLASH_API_KEY`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const images = data.results.map(img => ({
-          url: img.urls.regular,
-          alt: img.alt_description || 'Image'
-        }));
-        setSuggestedImages(images.length > 0 ? images : []);
-        if (images.length === 0) {
-          alert('No images found. Try different keywords.');
-        }
-      }
-    } catch (error) {
-      alert('Search failed. Try again.');
-    }
-    setSearchingImages(false);
-  };
-
   const selectImage = (url) => {
     setManualArticle({ ...manualArticle, imageUrl: url });
     setShowImageSuggestions(false);
@@ -264,13 +232,6 @@ Requirements:
     setAuthenticating(true);
     
     setTimeout(() => {
-      setUser({
-        name: 'User Profile',
-        email: 'user@example.com',
-        linkedInId: 'urn:li:person:ABC123XYZ',
-        profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-        linkedinConnected: true
-      });
       setIsAuthenticated(true);
       setAuthenticating(false);
     }, 1500);
@@ -278,7 +239,6 @@ Requirements:
 
   const handleSignOut = () => {
     setIsAuthenticated(false);
-    setUser(null);
     setArticles([]);
     setView('dashboard');
   };
