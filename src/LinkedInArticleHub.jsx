@@ -38,9 +38,11 @@ const LinkedInArticleHub = () => {
     { id: 'ai-evolution', label: 'Evolution of AI' },
     { id: 'ai-workplace', label: 'AI in the Workplace' },
     { id: 'ai-economy', label: 'AI in the Economy' },
+    { id: 'ai-programming', label: 'AI Programming' },
     { id: 'project-management', label: 'Project Management' },
-    { id: 'product-ownership', label: 'Product Ownership' },
-    { id: 'development', label: 'Development' }
+    { id: 'product-ownership', label: 'Product Management' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'legalities', label: 'Legalities' }
   ];
 
   // Validate and parse pasted content - JUST check format, not word count
