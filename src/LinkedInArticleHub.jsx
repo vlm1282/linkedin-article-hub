@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Copy, Image as ImageIcon, Zap } from 'lucide-react';
+import { Send, Globe, Eye, Plus, Share2, LogOut, Loader, CheckCircle, AlertCircle, Clock, Edit2, Save, Image as ImageIcon, Zap } from 'lucide-react';
 
 const LinkedInArticleHub = () => {
   // Authentication State
