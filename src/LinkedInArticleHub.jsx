@@ -87,6 +87,7 @@ Requirements:
 - Focus on professional development or industry insights`;
 
     try {
+      // Try with the standard OpenAI-compatible endpoint and Llama model
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -94,7 +95,7 @@ Requirements:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'mixtral-8x7b-32768',
+          model: 'llama-3.1-70b-versatile',
           messages: [
             {
               role: 'user',
@@ -102,21 +103,36 @@ Requirements:
             }
           ],
           temperature: 0.7,
-          max_tokens: 1500
+          max_tokens: 1500,
+          top_p: 1
         })
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        if (response.status === 401 || response.status === 403) {
           setShowApiKeyInput(true);
           setApiKeyError('Invalid API key. Please check and try again.');
           setGenerating(false);
           return;
         }
-        throw new Error(`API Error: ${response.status}`);
+        
+        if (response.status === 429) {
+          alert('⚠️ Rate limited. You\'ve used your free quota for today.\n\nGroq gives 30 requests/day free. Please try again tomorrow!');
+          setGenerating(false);
+          return;
+        }
+
+        throw new Error(`API Error ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
       }
 
       const data = await response.json();
+      
+      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        throw new Error('Invalid response from API');
+      }
+
       const generatedText = data.choices[0].message.content;
 
       // Set the generated content
@@ -124,7 +140,7 @@ Requirements:
       alert('✅ Article generated! Review and edit if needed.');
     } catch (error) {
       console.error('Generation error:', error);
-      alert(`❌ Generation failed: ${error.message}\n\nMake sure:\n1. Your API key is correct\n2. You have enough quota`);
+      alert(`❌ Generation failed: ${error.message}\n\nTroubleshooting:\n1. Check your API key is correct\n2. Make sure you have quota (30 free/day)\n3. Try a different topic\n4. Check Groq console for issues`);
     }
 
     setGenerating(false);
