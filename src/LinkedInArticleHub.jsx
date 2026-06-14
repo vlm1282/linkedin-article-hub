@@ -32,6 +32,7 @@ const LinkedInArticleHub = () => {
   const [searchingImages, setSearchingImages] = useState(false);
   const [suggestedImages, setSuggestedImages] = useState([]);
   const [showImageSuggestions, setShowImageSuggestions] = useState(false);
+  const [customImageSearch, setCustomImageSearch] = useState('');
 
   const topicCategories = [
     { id: 'ai-evolution', label: 'Evolution of AI' },
@@ -53,9 +54,9 @@ const LinkedInArticleHub = () => {
       const enWords = en.split(/\s+/).length;
       const frWords = fr.split(/\s+/).length;
 
-      // Check if within 200-300 word range (flexible for faster processing)
-      const enValid = enWords >= 150 && enWords <= 350;
-      const frValid = frWords >= 150 && frWords <= 350;
+      // Check if within 400-800 word range (flexible for 500-700 target)
+      const enValid = enWords >= 400 && enWords <= 800;
+      const frValid = frWords >= 400 && frWords <= 800;
 
       if (enValid && frValid) {
         setContentValid(true);
@@ -64,7 +65,7 @@ const LinkedInArticleHub = () => {
         return true;
       } else {
         setContentValid(false);
-        setValidationMessage(`⚠️ EN: ${enWords} words (need 150-350), FR: ${frWords} words (need 150-350)`);
+        setValidationMessage(`⚠️ EN: ${enWords} words (need 400-800), FR: ${frWords} words (need 400-800)`);
         return false;
       }
     } else {
@@ -105,33 +106,55 @@ const LinkedInArticleHub = () => {
 Format your response EXACTLY like this:
 
 === ENGLISH ===
-[Your English article here - 250 words - WITH VISUAL FORMATTING]
+[Your English article here - 500-700 words - COMPREHENSIVE & VISUAL]
 
 === FRENCH ===
-[Your French article here - 250 words - WITH VISUAL FORMATTING]
+[Your French article here - 500-700 words - COMPREHENSIVE & VISUAL]
 
-CRITICAL: Make it VISUAL and ENGAGING:
-✨ Use emojis/icons throughout (not too many, 2-3 total)
-• Use 2-3 bullet points for key takeaways
-📌 Use short, punchy paragraphs (2-3 sentences max)
-🎯 Start with a hook that grabs attention
-💡 Include 1 actionable insight or tip
-→ Use arrows and symbols for flow/emphasis
+STRUCTURE (must follow this):
+1. 🎯 HOOK (1-2 sentences)
+   - Attention-grabbing opening statement or question
+   - Make people want to keep reading
 
-Structure:
-1. Attention-grabbing opening line (with emoji)
-2. 1-2 short paragraphs explaining the topic
-3. 2-3 bullet points with key insights
-4. 1 actionable takeaway or call-to-action
-5. Brief closing thought
+2. 📌 CONTEXT (2-3 sentences)
+   - Why this topic matters NOW
+   - The business/personal impact
+   - The problem or opportunity
 
-Requirements:
-- Professional yet conversational tone
-- Suitable for LinkedIn
-- Aim for ~250 words (visual formatting reduces word count slightly)
-- Make it skimmable (people scan LinkedIn, not read)
-- Use line breaks between sections
-- Include relevant emojis but keep it professional`;
+3. 💡 KEY INSIGHTS (3-4 main points)
+   - Use bullet points or numbered list
+   - Each with a brief explanation (2-3 sentences)
+   - Include real examples or statistics where relevant
+   - Show practical application
+
+4. 🎬 STORY/EXAMPLE (2-3 paragraphs)
+   - One specific case study or real-world example
+   - Show how this works in practice
+   - Make it relatable and concrete
+
+5. ✨ ACTIONABLE TAKEAWAY (2-3 sentences)
+   - What can readers DO with this information?
+   - Specific, practical steps they can implement
+   - Make it easy to get started
+
+6. → CALL-TO-ACTION (1-2 sentences)
+   - Encourage engagement (comments, shares, thoughts)
+   - Ask a question to prompt responses
+   - End with energy/optimism
+
+FORMATTING:
+✨ Use emojis strategically (2-3 total, not overdone)
+• Use 3-4 bullet points or numbered list for key insights
+📌 Use short paragraphs (2-3 sentences max)
+→ Use arrows and symbols for visual flow
+💡 Make it skimmable but substantive
+
+TONE:
+- Professional yet conversational
+- Informative and insightful
+- Optimistic and forward-thinking
+- Suitable for LinkedIn audience
+- Aim for ~500-700 words (comprehensive but readable)`;
 
     navigator.clipboard.writeText(prompt).then(() => {
       setPromptCopied(true);
@@ -150,7 +173,7 @@ Requirements:
     return words.slice(0, 3);
   };
 
-  // Search for images on Unsplash
+  // Search for images on Unsplash with multiple strategies
   const searchImages = async () => {
     if (!manualArticle.topic.trim()) {
       alert('Please enter a topic first');
@@ -160,20 +183,26 @@ Requirements:
     setSearchingImages(true);
     try {
       const keywords = extractKeywords(manualArticle.topic);
+      
+      // Multiple search strategies for better diversity
       const searchQueries = [
-        manualArticle.topic,
-        keywords.join(' '),
-        manualArticle.topicCategory.replace(/-/g, ' ')
+        manualArticle.topic, // Exact topic
+        keywords.join(' '), // Main keywords
+        manualArticle.topicCategory.replace(/-/g, ' '), // Category
+        keywords[0] + ' professional', // First keyword + professional
+        'business ' + keywords[0], // Business context
+        'technology ' + keywords[0], // Tech context
       ];
 
       let allImages = [];
 
+      // Search with all queries to get 25+ diverse results
       for (const query of searchQueries) {
-        if (allImages.length >= 12) break;
+        if (allImages.length >= 25) break;
 
         try {
           const response = await fetch(
-            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=8&client_id=YOUR_UNSPLASH_API_KEY`
+            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=10&client_id=YOUR_UNSPLASH_API_KEY`
           );
 
           if (response.ok) {
@@ -189,9 +218,10 @@ Requirements:
         }
       }
 
+      // Remove duplicates and limit to 25
       const uniqueImages = allImages.filter((img, idx, arr) => 
         arr.findIndex(i => i.url === img.url) === idx
-      ).slice(0, 12);
+      ).slice(0, 25);
 
       const fallbackImages = [
         { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Professional' },
@@ -205,12 +235,45 @@ Requirements:
       setSuggestedImages(uniqueImages.length > 0 ? uniqueImages : fallbackImages);
       setShowImageSuggestions(true);
     } catch (error) {
+      console.log('Using fallback images');
       setSuggestedImages([
         { url: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&h=300&fit=crop', alt: 'Professional' },
         { url: 'https://images.unsplash.com/photo-1677442d019e157cab9fdb4e58b2c0edb78542ca8?w=500&h=300&fit=crop', alt: 'Business' },
         { url: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500&h=300&fit=crop', alt: 'Technology' }
       ]);
       setShowImageSuggestions(true);
+    }
+    setSearchingImages(false);
+  };
+
+  // Manual search for custom image queries
+  const searchImagesManual = async (searchTerm) => {
+    if (!searchTerm.trim()) {
+      alert('Please enter search terms');
+      return;
+    }
+
+    setSearchingImages(true);
+    try {
+      const response = await fetch(
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=25&client_id=YOUR_UNSPLASH_API_KEY`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const images = data.results.map(img => ({
+          url: img.urls.regular,
+          alt: img.alt_description || 'Image'
+        }));
+        setSuggestedImages(images.length > 0 ? images : []);
+        if (images.length === 0) {
+          alert('No images found. Try different keywords.');
+        }
+      } else {
+        alert('Search failed. Try again.');
+      }
+    } catch (error) {
+      alert('Search failed. Try again.');
     }
     setSearchingImages(false);
   };
@@ -1155,17 +1218,92 @@ Requirements:
                   ) : (
                     <>
                       <ImageIcon style={{ width: '1.25rem', height: '1.25rem' }} />
-                      Find Images
+                      Find Images (25+)
                     </>
                   )}
                 </button>
 
+                {/* Manual search refinement */}
+                <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f0fdf4', borderRadius: '0.5rem', border: '1px solid #86efac' }}>
+                  <label style={{
+                    display: 'block',
+                    fontWeight: '600',
+                    marginBottom: '0.5rem',
+                    color: '#1f2937',
+                    fontSize: '0.875rem'
+                  }}>
+                    Refine search (don't like the results?):
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <input
+                      type="text"
+                      value={customImageSearch}
+                      onChange={(e) => setCustomImageSearch(e.target.value)}
+                      placeholder="e.g., 'people', 'sunset', 'abstract', 'office'"
+                      onKeyPress={(e) => e.key === 'Enter' && searchImagesManual(customImageSearch)}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #86efac',
+                        borderRadius: '0.375rem',
+                        fontSize: '0.875rem',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <button
+                      onClick={() => searchImagesManual(customImageSearch)}
+                      disabled={!customImageSearch.trim() || searchingImages}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: customImageSearch.trim() && !searchingImages ? '#10b981' : '#d1d5db',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: customImageSearch.trim() && !searchingImages ? 'pointer' : 'not-allowed',
+                        fontWeight: '600',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      Search
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.5rem 0 0 0' }}>
+                    💡 Tip: Try keywords like 'landscape', 'people working', 'colorful', 'minimalist', etc.
+                  </p>
+                </div>
+
                 {showImageSuggestions && (
                   <div style={{ marginBottom: '1rem' }}>
-                    <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', marginBottom: '0.75rem' }}>
-                      Choose an image:
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <p style={{ fontSize: '0.875rem', fontWeight: '600', color: '#6b7280', margin: 0 }}>
+                        {suggestedImages.length} images found - click to select:
+                      </p>
+                      <button
+                        onClick={() => setShowImageSuggestions(false)}
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          background: '#f3f4f6',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          color: '#6b7280'
+                        }}
+                      >
+                        Collapse
+                      </button>
+                    </div>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', 
+                      gap: '0.75rem',
+                      maxHeight: '400px',
+                      overflowY: 'auto',
+                      padding: '0.5rem',
+                      background: '#f9fafb',
+                      borderRadius: '0.5rem'
+                    }}>
                       {suggestedImages.map((img, idx) => (
                         <div
                           key={idx}
@@ -1176,14 +1314,32 @@ Requirements:
                             overflow: 'hidden',
                             border: manualArticle.imageUrl === img.url ? '3px solid #10b981' : '2px solid #e5e7eb',
                             transition: 'all 0.2s',
-                            aspectRatio: '1'
+                            aspectRatio: '1',
+                            position: 'relative'
                           }}
+                          title={img.alt}
                         >
                           <img 
                             src={img.url} 
                             alt={img.alt}
                             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            loading="lazy"
                           />
+                          {manualArticle.imageUrl === img.url && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: 'rgba(16, 185, 129, 0.2)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <span style={{ fontSize: '1.5rem' }}>✓</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
