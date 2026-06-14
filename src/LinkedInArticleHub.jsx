@@ -272,7 +272,7 @@ IMPORTANT:
     setSearchingImages(true);
     try {
       const response = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=25&client_id=YOUR_UNSPLASH_API_KEY`
+        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchTerm)}&per_page=25&client_id=KgLPjRekFKSOZTbDbgzEtM12TD76d3lAWRvUAplyYQY`
       );
 
       if (response.ok) {
